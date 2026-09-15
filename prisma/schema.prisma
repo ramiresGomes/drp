@@ -45,6 +45,10 @@ model Person {
   congregation         Congregation @relation(fields: [congregationId], references: [id])
   isSuperAdmin         Boolean   @default(false)
   notes                String?
+  photoConsentAt       DateTime?
+  religiousConsentAt   DateTime?
+  muteOptionalNotifications Boolean @default(false)
+  documentExpiresAt    DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   roles                PersonRole[]
@@ -55,11 +59,15 @@ model Person {
   participations       Participation[]
   justifications       Justification[]
   availability         Availability[]
+  availabilityBlocks   AvailabilityBlock[]
   notifications        NotificationReceipt[]
   auditLogs            AuditLog[]            @relation("Actor")
   approvalRequested    DualApproval[]        @relation("RequestedBy")
   approvalDecided      DualApproval[]        @relation("DecidedBy")
   eventsCreated        RegionalEvent[]
+  eventAttendances     EventAttendance[]
+  lgpdRequests         LgpdRequest[]
+  reportTemplates      ReportTemplate[]
 }
 
 model PersonRole {
@@ -195,6 +203,38 @@ model Availability {
   note      String?
 }
 
+model AvailabilityBlock {
+  id        String   @id @default(cuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  startAt   DateTime
+  endAt     DateTime
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model LgpdRequest {
+  id          String   @id @default(cuid())
+  personId    String
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  type        String
+  reason      String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  handledAt   DateTime?
+  handledById String?
+}
+
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  filtersJson String
+  anonymized  Boolean  @default(true)
+  createdById String
+  createdBy   Person   @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
 model EventType {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -232,6 +272,7 @@ model EventAttendance {
   eventId   String
   event     RegionalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   personId  String
+  person    Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
   present   Boolean       @default(true)
   manual    Boolean       @default(false)
   latitude  Float?

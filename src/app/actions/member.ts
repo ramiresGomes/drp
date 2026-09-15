@@ -3,7 +3,7 @@
 import { addDays } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { fail, field, ok } from "@/lib/forms";
+import { fail, field, ok, optionalDate } from "@/lib/forms";
 import { distanceMeters, parseCoordinate } from "@/lib/geo";
 import { requirePerson } from "@/lib/session";
 import { toDay } from "@/lib/dates";
@@ -134,4 +134,52 @@ export async function checkInEvent(formData: FormData) {
   revalidatePath("/app/agenda");
   revalidatePath(`/app/checkin/${token}`);
   ok("/app/agenda");
+}
+
+export async function addAvailabilityBlock(formData: FormData) {
+  const person = await requirePerson();
+  const startAt = optionalDate(formData, "startAt");
+  const endAt = optionalDate(formData, "endAt");
+  const note = field(formData, "note") || null;
+  if (!startAt || !endAt) fail("/app/dados", "Informe o início e o fim do bloqueio.");
+  if (endAt < startAt) fail("/app/dados", "O fim do bloqueio precisa ser igual ou posterior ao início.");
+  await prisma.availabilityBlock.create({
+    data: { personId: person.id, startAt, endAt, note },
+  });
+  revalidatePath("/app/dados");
+  ok("/app/dados");
+}
+
+export async function deleteAvailabilityBlock(formData: FormData) {
+  const person = await requirePerson();
+  const id = field(formData, "id");
+  await prisma.availabilityBlock.deleteMany({ where: { id, personId: person.id } });
+  revalidatePath("/app/dados");
+  ok("/app/dados");
+}
+
+export async function updateNotificationPreference(formData: FormData) {
+  const person = await requirePerson();
+  await prisma.person.update({
+    where: { id: person.id },
+    data: { muteOptionalNotifications: field(formData, "muteOptional") === "on" },
+  });
+  revalidatePath("/app/dados");
+  revalidatePath("/app/notificacoes");
+  ok("/app/dados");
+}
+
+export async function submitLgpdRequest(formData: FormData) {
+  const person = await requirePerson();
+  const type = field(formData, "type");
+  const reason = field(formData, "reason");
+  if (!["ACCESS", "CORRECTION", "ERASURE"].includes(type) || !reason) {
+    fail("/app/dados", "Informe o tipo do pedido e a justificativa.");
+  }
+  await prisma.lgpdRequest.create({
+    data: { personId: person.id, type, reason },
+  });
+  revalidatePath("/app/dados");
+  revalidatePath("/app/admin/lgpd");
+  ok("/app/dados");
 }

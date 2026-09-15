@@ -11,7 +11,7 @@ export function checked(formData: FormData, key: string) {
 export function optionalDate(formData: FormData, key: string) {
   const value = field(formData, key);
   if (!value) return null;
-  const date = new Date(`${value}T12:00:00`);
+  const date = value.includes("T") ? new Date(value) : new Date(`${value}T12:00:00`);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 

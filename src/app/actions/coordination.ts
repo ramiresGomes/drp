@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { fail, field } from "@/lib/forms";
 import { canScale } from "@/lib/permissions";
 import { requireCoordinator } from "@/lib/session";
+import { saveUpload } from "@/lib/uploads";
 
 async function requireInstitutionAccess(institutionId: string) {
   const person = await requireCoordinator();
@@ -57,6 +58,16 @@ export async function addScaleEntry(formData: FormData) {
   const availability = person.availability.find((item) => item.weekday === weekday);
   if (availability && !availability.available) {
     fail(path, "Esta pessoa marcou indisponibilidade neste dia da semana.");
+  }
+  const blocked = await prisma.availabilityBlock.findFirst({
+    where: {
+      personId,
+      startAt: { lte: occurrence.date },
+      endAt: { gte: toDay(occurrence.date) },
+    },
+  });
+  if (blocked) {
+    fail(path, "Esta pessoa tem bloqueio de agenda neste período.");
   }
 
   const currentCount = await prisma.scaleEntry.count({ where: { occurrenceId } });
@@ -198,4 +209,31 @@ export async function addOccurrenceNote(formData: FormData) {
   await prisma.occurrence.update({ where: { id }, data: { notes } });
   await audit(actor.id, "OCCURRENCE_NOTE", "Occurrence", id, "Observação do atendimento");
   revalidatePath(`/app/coordenacao/${occurrence.series.institutionId}`);
+}
+
+export async function attachOccurrencePhoto(formData: FormData) {
+  const id = field(formData, "id");
+  const occurrence = await prisma.occurrence.findUnique({
+    where: { id },
+    include: { series: true, scale: { include: { person: true } } },
+  });
+  if (!occurrence) fail("/app/coordenacao", "Atendimento não encontrado.");
+  const actor = await requireInstitutionAccess(occurrence.series.institutionId);
+  const path = `/app/coordenacao/${occurrence.series.institutionId}`;
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) {
+    fail(path, "Anexe uma foto ou PDF permitido.");
+  }
+  try {
+    const photoUrl = await saveUpload(file, "ocorrencias");
+    await prisma.occurrence.update({
+      where: { id },
+      data: { photoUrl, photoApproved: false },
+    });
+    await audit(actor.id, "OCCURRENCE_PHOTO", "Occurrence", id, "Arquivo enviado para moderação");
+    revalidatePath(path);
+    revalidatePath("/app/admin/moderacao");
+  } catch (error) {
+    fail(path, error instanceof Error ? error.message : "Não foi possível salvar o arquivo.");
+  }
 }

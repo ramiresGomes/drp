@@ -8,7 +8,10 @@ import { requirePerson } from "@/lib/session";
 export default async function MemberNotificationsPage() {
   const person = await requirePerson();
   const receipts = await prisma.notificationReceipt.findMany({
-    where: { personId: person.id },
+    where: {
+      personId: person.id,
+      ...(person.muteOptionalNotifications ? { notification: { kind: { not: "INFO" } } } : {}),
+    },
     include: { notification: true },
     orderBy: { notification: { createdAt: "desc" } },
   });
@@ -18,6 +21,7 @@ export default async function MemberNotificationsPage() {
       <h1 className="mb-2 font-heading text-3xl">Avisos</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Canal interno da regional. Aviso obrigatório não pode ser desligado nas preferências.
+        {person.muteOptionalNotifications ? " Avisos opcionais estão silenciados." : ""}
       </p>
       {receipts.length === 0 ? (
         <EmptyState title="Caixa vazia" description="Quando a secretaria publicar um aviso, ele chega aqui." />

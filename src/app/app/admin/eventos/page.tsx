@@ -1,4 +1,11 @@
-import { addBaptismName, createEventType, createRegionalEvent, markEventAttendance, toggleChecklistItem } from "@/app/actions/admin";
+import {
+  addBaptismName,
+  createEventType,
+  createRegionalEvent,
+  markEventAttendance,
+  toggleChecklistItem,
+  updateChecklistDetails,
+} from "@/app/actions/admin";
 import { AdminNav } from "@/components/admin-nav";
 import { EmptyState, Flash } from "@/components/flash";
 import { controlClass, Field } from "@/components/field";
@@ -126,21 +133,41 @@ export default async function EventsPage({
                 </Link>
               </p>
               {checklist.length > 0 ? (
-                <div className="mt-3 grid gap-2">
+                <div className="mt-3 grid gap-3">
                   <p className="text-sm font-medium">Checklist deste evento</p>
                   {checklist.map((item) => (
-                    <form action={toggleChecklistItem} key={item.id} className="flex items-center justify-between gap-2">
-                      <input type="hidden" name="eventId" value={event.id} />
-                      <input type="hidden" name="itemId" value={item.id} />
-                      <span className="text-sm">
-                        {item.done ? "✓ " : ""}
-                        {item.label}
-                        {item.required ? " · obrigatório" : ""}
-                      </span>
-                      <Button type="submit" size="sm" variant="outline">
-                        {item.done ? "Reabrir item" : "Concluir"}
-                      </Button>
-                    </form>
+                    <div key={item.id} className="rounded-lg border border-border p-3">
+                      <form action={toggleChecklistItem} className="flex items-center justify-between gap-2">
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <span className="text-sm">
+                          {item.done ? "✓ " : ""}
+                          {item.label}
+                          {item.required ? " · obrigatório" : ""}
+                          {item.owner ? ` · resp. ${item.owner}` : ""}
+                          {item.dueAt ? ` · até ${item.dueAt.replace("T", " ")}` : ""}
+                        </span>
+                        <Button type="submit" size="sm" variant="outline">
+                          {item.done ? "Reabrir item" : "Concluir"}
+                        </Button>
+                      </form>
+                      <form action={updateChecklistDetails} className="mt-2 grid gap-2 sm:grid-cols-3">
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <Field label="Responsável">
+                          <input className={controlClass} name="owner" defaultValue={item.owner} />
+                        </Field>
+                        <Field label="Prazo">
+                          <input className={controlClass} type="datetime-local" name="dueAt" defaultValue={item.dueAt} />
+                        </Field>
+                        <Field label="Evidência">
+                          <input className={controlClass} name="evidence" defaultValue={item.evidence} placeholder="Link ou nota" />
+                        </Field>
+                        <Button type="submit" size="sm" variant="outline" className="sm:col-span-3">
+                          Guardar responsável e prazo
+                        </Button>
+                      </form>
+                    </div>
                   ))}
                 </div>
               ) : null}

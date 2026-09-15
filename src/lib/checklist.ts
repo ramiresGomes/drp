@@ -3,6 +3,9 @@ export type ChecklistItem = {
   label: string;
   required: boolean;
   done: boolean;
+  owner: string;
+  dueAt: string;
+  evidence: string;
 };
 
 export function parseChecklist(json: string): ChecklistItem[] {
@@ -15,6 +18,9 @@ export function parseChecklist(json: string): ChecklistItem[] {
         label: String(item.label ?? "").trim(),
         required: Boolean(item.required),
         done: Boolean(item.done),
+        owner: String(item.owner ?? "").trim(),
+        dueAt: String(item.dueAt ?? "").trim(),
+        evidence: String(item.evidence ?? "").trim(),
       }))
       .filter((item) => item.label);
   } catch {

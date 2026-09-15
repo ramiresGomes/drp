@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import { isLinkActive } from "@/lib/links";
-import { requireAdmin } from "@/lib/session";
+import { requireLinker } from "@/lib/session";
+import { isAdmin } from "@/lib/permissions";
 import { formatDay } from "@/lib/dates";
 
 export default async function LinksPage({
@@ -14,7 +15,7 @@ export default async function LinksPage({
 }: {
   searchParams: Promise<{ erro?: string; ok?: string }>;
 }) {
-  await requireAdmin();
+  const actor = await requireLinker();
   const params = await searchParams;
   const [links, people, institutions] = await Promise.all([
     prisma.institutionLink.findMany({
@@ -27,7 +28,7 @@ export default async function LinksPage({
 
   return (
     <div>
-      <AdminNav current="/app/admin/vinculos" />
+      {isAdmin(actor) ? <AdminNav current="/app/admin/vinculos" /> : null}
       <h1 className="mb-2 font-heading text-3xl">Vínculos institucionais</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Sem vínculo ativo a pessoa não entra na escala. Instituição com recadastramento exige data final de vigência.

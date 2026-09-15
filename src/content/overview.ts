@@ -43,15 +43,15 @@ export const nextSteps = [
   {
     title: "Operação cotidiana da v1",
     detail:
-      "Cadastros, vínculos com vigência, escalas com capacidade e conflito, presença no mesmo dia e check-in de evento pelo QR já estão no sistema.",
+      "Cadastros, vínculos, escalas, presença no mesmo dia, check-in QR, foto com moderação, modelos de relatório, bloqueios, pedidos LGPD do titular e checklist com responsável já estão no sistema.",
   },
   {
     title: "Google OAuth em produção",
     detail: "O mesmo provedor vale para os três painéis. Nesta prévia, o e-mail de demonstração continua disponível.",
   },
   {
-    title: "Evoluções da v1",
+    title: "Fora desta v1",
     detail:
-      "Foto com moderação, construtor de relatório com modelos salvos e PWA de coordenação ficam para o próximo ciclo.",
+      "PWA de coordenação, e-mail/WhatsApp, autenticação em dois fatores e outras regionais continuam fora do escopo.",
   },
 ];

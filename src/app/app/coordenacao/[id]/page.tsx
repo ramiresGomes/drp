@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import {
   addOccurrenceNote,
   addScaleEntry,
+  attachOccurrencePhoto,
   cancelOccurrence,
   closeOccurrence,
   markParticipation,
@@ -196,6 +197,30 @@ export default async function InstitutionCoordinationPage({
                         />
                         <Button type="submit" variant="outline">
                           Salvar observação
+                        </Button>
+                      </form>
+                      <form action={attachOccurrencePhoto} encType="multipart/form-data" className="mt-4 grid gap-2">
+                        <input type="hidden" name="id" value={occurrence.id} />
+                        <p className="text-sm font-medium">Foto ou PDF do atendimento</p>
+                        {occurrence.photoUrl ? (
+                          <p className="text-sm text-muted-foreground">
+                            {occurrence.photoApproved
+                              ? "Arquivo aprovado pela secretaria."
+                              : "Aguardando moderação da secretaria."}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Só fica visível no sistema depois da moderação.
+                          </p>
+                        )}
+                        {occurrence.photoApproved && occurrence.photoUrl ? (
+                          <a className="text-sm underline-offset-4 hover:underline" href={occurrence.photoUrl}>
+                            Abrir arquivo aprovado
+                          </a>
+                        ) : null}
+                        <input className="text-sm" type="file" name="photo" accept="image/jpeg,image/png,image/webp,application/pdf" />
+                        <Button type="submit" variant="outline">
+                          Enviar para moderação
                         </Button>
                       </form>
 

@@ -29,7 +29,11 @@ export default async function AppHomePage() {
       ? prisma.dualApproval.count({ where: { status: "PENDING" } })
       : Promise.resolve(0),
     prisma.notificationReceipt.count({
-      where: { personId: person.id, readAt: null },
+      where: {
+        personId: person.id,
+        readAt: null,
+        ...(person.muteOptionalNotifications ? { notification: { kind: { not: "INFO" } } } : {}),
+      },
     }),
     isAdmin(person) ? getOperationalPendencies() : Promise.resolve(null),
   ]);
@@ -172,6 +176,62 @@ export default async function AppHomePage() {
                   </p>
                 ))
               )}
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
+
+      {pendencies ? (
+        <section className="mb-8 grid gap-4 md:grid-cols-3">
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Fotos em moderação</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {pendencies.pendingPhotos.length === 0 ? (
+                <p>Nenhum arquivo aguardando aprovação.</p>
+              ) : (
+                pendencies.pendingPhotos.map((item) => (
+                  <p key={item.id}>
+                    {item.series.institution.name} · {formatDay(item.date)}
+                  </p>
+                ))
+              )}
+              <Button render={<Link href="/app/admin/moderacao" />} variant="outline" size="sm">
+                Abrir moderação
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Documentos vencendo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {pendencies.expiringDocuments.length === 0 ? (
+                <p>Nenhum documento vencendo nos próximos 30 dias.</p>
+              ) : (
+                pendencies.expiringDocuments.map((item) => (
+                  <p key={item.id}>
+                    {item.name}
+                    {item.documentExpiresAt ? ` · até ${formatDay(item.documentExpiresAt)}` : ""}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Pedidos LGPD</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                {pendencies.pendingLgpd === 0
+                  ? "Nenhum pedido pendente."
+                  : `${pendencies.pendingLgpd} pedido(s) aguardando a secretaria.`}
+              </p>
+              <Button render={<Link href="/app/admin/lgpd" />} variant="outline" size="sm">
+                Abrir fila LGPD
+              </Button>
             </CardContent>
           </Card>
         </section>

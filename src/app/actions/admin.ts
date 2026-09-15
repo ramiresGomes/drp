@@ -11,7 +11,8 @@ import { parseCoordinate } from "@/lib/geo";
 import { STATUS_LABELS } from "@/lib/labels";
 import { musicianSingerConflict } from "@/lib/permissions";
 import { ensureOccurrences } from "@/lib/occurrences";
-import { requireAdmin } from "@/lib/session";
+import { reportQuery, type ReportFilters } from "@/lib/reports";
+import { requireAdmin, requireLinker } from "@/lib/session";
 
 function nextWeekday(weekday: number, from = new Date()) {
   const date = new Date(from);
@@ -173,6 +174,11 @@ export async function updatePerson(formData: FormData) {
         status,
         isMinor,
         consentAt: isMinor ? current.consentAt ?? new Date() : current.consentAt,
+        religiousConsentAt: checked(formData, "religiousConsent")
+          ? current.religiousConsentAt ?? new Date()
+          : null,
+        photoConsentAt: checked(formData, "photoConsent") ? current.photoConsentAt ?? new Date() : null,
+        documentExpiresAt: optionalDate(formData, "documentExpiresAt"),
       },
     }),
     prisma.personRole.deleteMany({ where: { personId: id } }),
@@ -195,7 +201,7 @@ export async function updatePerson(formData: FormData) {
 }
 
 export async function createInstitutionLink(formData: FormData) {
-  const actor = await requireAdmin();
+  const actor = await requireLinker();
   const personId = field(formData, "personId");
   const institutionId = field(formData, "institutionId");
   const justification = field(formData, "justification") || null;
@@ -235,7 +241,7 @@ export async function createInstitutionLink(formData: FormData) {
 }
 
 export async function revokeInstitutionLink(formData: FormData) {
-  const actor = await requireAdmin();
+  const actor = await requireLinker();
   const id = field(formData, "id");
   const justification = field(formData, "justification") || "Vínculo encerrado pela secretaria.";
   await prisma.institutionLink.update({
@@ -429,12 +435,16 @@ export async function createNotification(formData: FormData) {
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       createdById: actor.id,
       receipts: {
-        create: audiencePeople.map((person) => ({ personId: person.id })),
+        create: audiencePeople
+          .filter((person) => kind === "MANDATORY" || !person.muteOptionalNotifications)
+          .map((person) => ({ personId: person.id })),
       },
     },
   });
   await audit(actor.id, "CREATE_NOTIFICATION", "Notification", notification.id, title);
   revalidatePath("/app/admin/notificacoes");
+  revalidatePath("/app/notificacoes");
+  revalidatePath("/app");
 }
 
 export async function requestDualApproval(formData: FormData) {
@@ -493,6 +503,10 @@ export async function decideDualApproval(formData: FormData) {
           notes: "Apagado por solicitação LGPD.",
         },
       });
+      await prisma.lgpdRequest.updateMany({
+        where: { personId: request.entityId, type: "ERASURE", status: { in: ["PENDING", "FORWARDED"] } },
+        data: { status: "DONE", handledAt: new Date(), handledById: actor.id },
+      });
     }
     if (request.type === "GRANT_SUPERADMIN") {
       await prisma.person.update({ where: { id: request.entityId }, data: { isSuperAdmin: true } });
@@ -514,4 +528,127 @@ export async function decideDualApproval(formData: FormData) {
 
   await audit(actor.id, `DUAL_${decision.toUpperCase()}`, "DualApproval", id, `${request.type} ${decision}`);
   revalidatePath("/app/admin/aprovacoes");
+  revalidatePath("/app/admin/lgpd");
+}
+
+export async function moderateOccurrencePhoto(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = field(formData, "id");
+  const decision = field(formData, "decision");
+  const occurrence = await prisma.occurrence.findUnique({ where: { id } });
+  if (!occurrence?.photoUrl) fail("/app/admin/moderacao", "Não há arquivo para moderar.");
+  if (decision === "reject") {
+    await prisma.occurrence.update({
+      where: { id },
+      data: { photoUrl: null, photoApproved: false },
+    });
+    await audit(actor.id, "PHOTO_REJECT", "Occurrence", id, "Arquivo recusado na moderação");
+  } else {
+    await prisma.occurrence.update({ where: { id }, data: { photoApproved: true } });
+    await audit(actor.id, "PHOTO_APPROVE", "Occurrence", id, "Arquivo aprovado na moderação");
+  }
+  revalidatePath("/app/admin/moderacao");
+  ok("/app/admin/moderacao");
+}
+
+export async function updateChecklistDetails(formData: FormData) {
+  const actor = await requireAdmin();
+  const eventId = field(formData, "eventId");
+  const itemId = field(formData, "itemId");
+  const event = await prisma.regionalEvent.findUnique({ where: { id: eventId } });
+  if (!event) fail("/app/admin/eventos", "Evento não encontrado.");
+  const items = parseChecklist(event.checklistJson).map((item) =>
+    item.id === itemId
+      ? {
+          ...item,
+          owner: field(formData, "owner"),
+          dueAt: field(formData, "dueAt"),
+          evidence: field(formData, "evidence"),
+        }
+      : item,
+  );
+  await prisma.regionalEvent.update({
+    where: { id: eventId },
+    data: { checklistJson: JSON.stringify(items) },
+  });
+  await audit(actor.id, "EVENT_CHECKLIST_DETAIL", "RegionalEvent", eventId, itemId);
+  revalidatePath("/app/admin/eventos");
+  revalidatePath("/app");
+}
+
+export async function handleLgpdRequest(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = field(formData, "id");
+  const decision = field(formData, "decision");
+  const request = await prisma.lgpdRequest.findUnique({ where: { id } });
+  if (!request || request.status !== "PENDING") {
+    fail("/app/admin/lgpd", "Pedido LGPD não encontrado.");
+  }
+  if (request.type === "ERASURE" && decision !== "forward" && decision !== "reject") {
+    fail("/app/admin/lgpd", "Exclusão definitiva só segue pela dupla aprovação.");
+  }
+  if (request.type === "ERASURE" && decision === "forward") {
+    await prisma.lgpdRequest.update({
+      where: { id },
+      data: { status: "FORWARDED", handledById: actor.id, handledAt: new Date() },
+    });
+    await prisma.dualApproval.create({
+      data: {
+        type: "LGPD_ERASURE",
+        entity: "Person",
+        entityId: request.personId,
+        payload: JSON.stringify({ lgpdRequestId: id }),
+        reason: request.reason,
+        requestedById: actor.id,
+      },
+    });
+    await audit(actor.id, "LGPD_FORWARD", "LgpdRequest", id, "Pedido de exclusão encaminhado à dupla aprovação");
+    revalidatePath("/app/admin/lgpd");
+    revalidatePath("/app/admin/aprovacoes");
+    ok("/app/admin/lgpd");
+  }
+  await prisma.lgpdRequest.update({
+    where: { id },
+    data: {
+      status: decision === "reject" ? "REJECTED" : "DONE",
+      handledById: actor.id,
+      handledAt: new Date(),
+    },
+  });
+  await audit(actor.id, "LGPD_HANDLE", "LgpdRequest", id, `${request.type} ${decision}`);
+  revalidatePath("/app/admin/lgpd");
+  ok("/app/admin/lgpd");
+}
+
+export async function saveReportTemplate(formData: FormData) {
+  const actor = await requireAdmin();
+  const name = field(formData, "name");
+  if (!name) fail("/app/admin/relatorios", "Informe o nome do modelo.");
+  const filters: ReportFilters = {
+    setor: field(formData, "setor") || null,
+    cidade: field(formData, "cidade") || null,
+    situacao: field(formData, "situacao") || null,
+    fato: field(formData, "fato") || "atendimentos",
+    anonimizado: field(formData, "anonimizado") || "1",
+  };
+  await prisma.reportTemplate.create({
+    data: {
+      name,
+      filtersJson: JSON.stringify(filters),
+      anonymized: filters.anonimizado !== "0",
+      createdById: actor.id,
+    },
+  });
+  await audit(actor.id, "SAVE_REPORT_TEMPLATE", "ReportTemplate", name, name);
+  const query = reportQuery(filters);
+  ok(`/app/admin/relatorios${query.size ? `?${query.toString()}` : ""}`);
+}
+
+export async function deleteReportTemplate(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = field(formData, "id");
+  await prisma.reportTemplate.delete({ where: { id } });
+  await audit(actor.id, "DELETE_REPORT_TEMPLATE", "ReportTemplate", id, "Modelo removido");
+  revalidatePath("/app/admin/relatorios");
+  ok("/app/admin/relatorios");
 }

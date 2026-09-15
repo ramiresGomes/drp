@@ -86,9 +86,25 @@ export default async function PersonEditPage({
                 ))}
               </select>
             </Field>
+            <Field label="Validade do documento">
+              <input
+                className={controlClass}
+                type="date"
+                name="documentExpiresAt"
+                defaultValue={person.documentExpiresAt ? format(person.documentExpiresAt, "yyyy-MM-dd") : ""}
+              />
+            </Field>
             <Field label="Observação" className="md:col-span-2">
               <input className={controlClass} name="notes" defaultValue={person.notes ?? ""} />
             </Field>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="religiousConsent" defaultChecked={Boolean(person.religiousConsentAt)} />{" "}
+              Consentimento para dado religioso
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="photoConsent" defaultChecked={Boolean(person.photoConsentAt)} /> Consentimento
+              para fotos
+            </label>
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium">Papéis</legend>
               {Object.entries(ROLE_LABELS).map(([value, label]) => (

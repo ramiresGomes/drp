@@ -6,9 +6,10 @@ Há um cadastro Darpe por pessoa, vínculo institucional para autorizar escala, 
 
 ## Painéis
 
-- **Secretaria** — pessoas, cidades, comuns, instituições, vínculos, séries, eventos, avisos, dupla aprovação, auditoria e relatórios.
-- **Coordenação** — escala só de vinculados, cancelamento justificado, presença no mesmo dia, participação extra.
-- **Colaborador** — agenda, justificativa, avisos (ciência/confirmação) e dados próprios.
+- **Secretaria** — pessoas, cidades, comuns, instituições, vínculos, séries, eventos, avisos, moderação de arquivos, pedidos LGPD, dupla aprovação, auditoria e relatórios.
+- **Coordenação** — escala só de vinculados, cancelamento justificado, presença no mesmo dia, participação extra, envio de foto/PDF para moderação.
+- **Colaborador** — agenda, justificativa, avisos (ciência/confirmação), dados próprios, bloqueios de agenda e pedido LGPD.
+- **Encarregado regional** — concede vínculo institucional sem abrir o restante da secretaria.
 
 Todos os painéis usam o mesmo Google OAuth. Nesta prévia local, se `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` não estiverem definidos, o login de demonstração por e-mail cadastrado permanece disponível.
 
@@ -50,4 +51,7 @@ Não há senha: o e-mail precisa existir no cadastro Darpe.
 - Presença e fechamento da lista no mesmo dia; correção no mesmo dia sem segunda aprovação.
 - Evento obrigatório vale para toda a regional.
 - Check-in de evento é pelo QR, com login e localização quando o local tem geofence.
+- Foto ou PDF do atendimento só fica visível depois da moderação da secretaria.
+- Relatório amplo permanece anonimizado até a secretaria marcar identificação.
+- Pedido LGPD do titular: acesso e correção na secretaria; exclusão segue para dupla aprovação.
 - Dupla aprovação: superadmin, exclusão LGPD, reabrir presença após o dia, cancelar reunião/ensaio convocado.

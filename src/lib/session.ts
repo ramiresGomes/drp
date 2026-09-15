@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { canUseCoordinatorPanel, isAdmin } from "@/lib/permissions";
+import { canLinkPeople, canUseCoordinatorPanel, isAdmin } from "@/lib/permissions";
 import type { CurrentPerson } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
@@ -33,6 +33,7 @@ export async function getCurrentPerson(): Promise<CurrentPerson | null> {
     roles,
     competencies: person.competencies.map((item) => item.competency),
     responsibleInstitutionIds: person.responsibilities.map((item) => item.institutionId),
+    muteOptionalNotifications: person.muteOptionalNotifications,
   };
 }
 
@@ -51,5 +52,11 @@ export async function requireAdmin() {
 export async function requireCoordinator() {
   const person = await requirePerson();
   if (!canUseCoordinatorPanel(person)) redirect("/app");
+  return person;
+}
+
+export async function requireLinker() {
+  const person = await requirePerson();
+  if (!canLinkPeople(person)) redirect("/app");
   return person;
 }
