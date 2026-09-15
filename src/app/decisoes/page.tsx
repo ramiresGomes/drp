@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { closedDecisions, dualApprovalProposal, stillOpen } from "@/content/decisions";
+import { closedDecisions, dualApprovalRules } from "@/content/decisions";
 
 export const metadata: Metadata = { title: "Decisões" };
 
@@ -11,31 +11,20 @@ export default function DecisionsPage() {
     <div>
       <PageHeader
         kicker="Governança"
-        title="O modelo já pode virar implementação. Resta a dupla aprovação."
-        description="A dupla aprovação é a única pendência de negócio. Login, menores e cidades já estão fechados."
+        badge="PRD 1.0"
+        title="A definição de negócio está fechada."
+        description="Login, menores, cidades e dupla aprovação já foram confirmados. O próximo passo é implementar a v1."
       />
 
       <section className="mb-10">
-        <h2 className="mb-4 text-2xl">Já fechado</h2>
-        <ul className="space-y-3">
-          {closedDecisions.map((item) => (
-            <li key={item} className="flex gap-3 text-sm leading-6">
-              <Badge variant="secondary">Fechado</Badge>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mb-10">
-        <h2 className="mb-4 text-2xl">Dupla aprovação — proposta</h2>
+        <h2 className="mb-4 text-2xl">Dupla aprovação</h2>
         <div className="grid gap-3">
-          {dualApprovalProposal.map((item) => (
+          {dualApprovalRules.map((item) => (
             <Card key={item.action} className="shadow-none">
               <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
                 <CardTitle className="text-lg">{item.action}</CardTitle>
-                <Badge variant={item.recommend === "Não" ? "outline" : "secondary"}>
-                  {item.recommend}
+                <Badge variant={item.required ? "secondary" : "outline"}>
+                  {item.required ? "Exige duas aprovações" : "Um responsável + auditoria"}
                 </Badge>
               </CardHeader>
               <CardContent>
@@ -47,19 +36,15 @@ export default function DecisionsPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-2xl">Ainda aberto</h2>
-        <div className="grid gap-4">
-          {stillOpen.map((item) => (
-            <Card key={item.id} className="shadow-none">
-              <CardHeader>
-                <CardTitle className="text-xl">{item.question}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-6 text-muted-foreground">{item.proposal}</p>
-              </CardContent>
-            </Card>
+        <h2 className="mb-4 text-2xl">Demais decisões fechadas</h2>
+        <ul className="space-y-3">
+          {closedDecisions.map((item) => (
+            <li key={item} className="flex gap-3 text-sm leading-6">
+              <Badge variant="secondary">Fechado</Badge>
+              <span>{item}</span>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
     </div>
   );

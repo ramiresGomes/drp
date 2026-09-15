@@ -1,5 +1,5 @@
 export const prd = {
-  version: "0.2",
+  version: "1.0",
   product: "DRP",
   goal: "Organizar o credenciamento, os vínculos, as escalas, as presenças e os indicadores do Darpe da Regional Uberlândia-MG, com painéis distintos para secretaria, coordenação de instituição e colaboradores.",
   outOfScopeV1: [
@@ -68,8 +68,8 @@ export const prd = {
         "Como coordenador, marco presenças no dia do atendimento e fecho o registro no mesmo dia.",
         "Como coordenador, incluo participante extra e isso conta nas métricas.",
         "Como coordenador, anexo foto ou arquivo permitido, que só fica visível após moderação.",
-        "Como coordenador, corrijo uma presença já encerrada.",
-        "Como secretário, reabro a lista de presença.",
+        "Como coordenador, corrijo uma presença no mesmo dia, sem segunda aprovação.",
+        "Como secretário, reabro a lista depois do dia somente com dupla aprovação.",
         "Como sistema, classifico falta somente se a pessoa estava escalada, não veio e não justificou.",
       ],
     },
@@ -82,7 +82,7 @@ export const prd = {
         "Como organizador, marco itens, responsáveis, prazos e evidências opcionais.",
         "Como colaborador, leio o QR no local; o sistema valida login e localização.",
         "Como secretário, registro presença manual de quem não tem acesso.",
-        "Como sistema, envio lembretes automáticos e convoco quem for cadastrado depois.",
+        "Como secretário, cancelo reunião do Darpe ou ensaio já convocado somente com dupla aprovação.",
       ],
     },
     {
@@ -122,6 +122,8 @@ export const prd = {
         "Como titular, envio pedido de acesso, correção ou exclusão para os administradores.",
         "Como secretaria, registro consentimento para dados religiosos e para fotos.",
         "Como sistema, gravo auditoria de permissões, vínculos, escalas, presenças, justificativas e exclusões.",
+        "Como sistema, exijo segunda aprovação para conceder superadmin, exclusão LGPD, reabrir presença após o dia e cancelar reunião ou ensaio já convocado.",
+        "Como coordenador ou secretário, troco escala, vinculo colaborador e envio notificação regional sem segunda aprovação, com auditoria.",
         "Como jurídico, acompanho incidentes junto aos secretários.",
       ],
     },
@@ -137,4 +139,5 @@ export const acceptance = [
   "QR Code não registra presença sem login válido e localização compatível.",
   "Relatório amplo não expõe identificadores pessoais sem permissão explícita.",
   "Exclusão física de pessoa só ocorre após fluxo LGPD.",
+  "Superadmin, exclusão LGPD, reabrir presença depois do dia e cancelar reunião/ensaio convocado exigem dupla aprovação.",
 ];

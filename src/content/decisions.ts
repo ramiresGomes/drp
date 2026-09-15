@@ -13,56 +13,49 @@ export const closedDecisions = [
   "Autenticação de todos os painéis, inclusive o administrativo, é Google OAuth com e-mail Google. O que muda entre os painéis é a permissão, não o provedor de login.",
   "Menor colaborador também acessa com conta Google. O cadastro e o consentimento continuam com a secretaria.",
   "A lista completa de cidades da regional é cadastrada no painel administrativo. Não há lista fechada no PRD.",
+  "Dupla aprovação vale para conceder ou revogar superadministrador, exclusão LGPD, reabrir presença depois do dia e cancelar reunião do Darpe ou ensaio já convocado.",
+  "Não exige dupla aprovação: notificação para a regional (auditoria basta), correção de presença no mesmo dia, troca na escala e vínculo institucional.",
 ];
 
-export const dualApprovalProposal = [
+export const dualApprovalRules = [
   {
     action: "Conceder ou revogar papel de superadministrador",
-    recommend: "Sim",
+    required: true,
     why: "Muda o controle de todo o sistema.",
   },
   {
     action: "Atender exclusão LGPD / apagamento definitivo",
-    recommend: "Sim",
+    required: true,
     why: "É irreversível e envolve dado religioso.",
   },
   {
     action: "Reabrir lista de presença após o dia do atendimento",
-    recommend: "Sim",
+    required: true,
     why: "Altera indicador oficial depois do fechamento.",
   },
   {
     action: "Cancelar reunião do Darpe ou ensaio já convocado",
-    recommend: "Sim",
+    required: true,
     why: "Afeta toda a regional e a obrigatoriedade de presença.",
   },
   {
     action: "Enviar notificação para toda a regional",
-    recommend: "Opcional",
-    why: "Pode ficar só com secretários, sem segundo aprovador, se a auditoria for suficiente.",
+    required: false,
+    why: "Fica com os secretários. A auditoria registra o envio.",
   },
   {
     action: "Corrigir presença no mesmo dia pelo coordenador",
-    recommend: "Não",
+    required: false,
     why: "É operação cotidiana da instituição.",
   },
   {
     action: "Trocar pessoa na escala",
-    recommend: "Não",
-    why: "Já foi definido que o coordenador troca diretamente.",
+    required: false,
+    why: "O coordenador troca diretamente.",
   },
   {
     action: "Vincular colaborador a instituição",
-    recommend: "Não",
-    why: "O contato prévio substitui a dupla aprovação digital.",
-  },
-];
-
-export const stillOpen = [
-  {
-    id: "dual-approval",
-    question: "Quais ações exigem dupla aprovação?",
-    proposal:
-      "A proposta acima continua valendo. Confirme o que entra: superadmin, exclusão LGPD, reabrir presença e cancelar reunião/ensaio. O restante da operação cotidiana fica com um único responsável e auditoria.",
+    required: false,
+    why: "O contato prévio substitui a segunda aprovação digital.",
   },
 ];

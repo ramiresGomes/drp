@@ -1,7 +1,7 @@
 export const recoveryNotes = {
   title: "Continuação da sessão Darpe system definition",
   summary:
-    "A transcrição da sessão original foi consolidada neste documento vivo. O repositório de produto é https://github.com/ramiresGomes/drp. Login de todos os painéis: Google OAuth. Cidades da regional entram pelo cadastro administrativo.",
+    "A transcrição da sessão original foi consolidada neste documento vivo. Login de todos os painéis: Google OAuth. Cidades da regional entram pelo cadastro administrativo. A definição de negócio está fechada, inclusive a dupla aprovação.",
   recovered: [
     "Sistema web com painéis por público, depois PWA para coordenação.",
     "Escopo inicial: Darpe da Regional Uberlândia-MG e cidades da regional.",
@@ -41,15 +41,15 @@ export const closedScope = {
 
 export const nextSteps = [
   {
-    title: "Revisar o PRD",
-    detail: "Confirme atores, estados, permissões e o recorte da primeira versão.",
+    title: "Implementar a v1",
+    detail: "A definição de negócio está fechada. O próximo passo é o sistema operacional, começando pelos cadastros, vínculos e escalas.",
   },
   {
-    title: "Fechar a dupla aprovação",
-    detail: "Única pendência de negócio que ainda altera o PRD.",
+    title: "Google OAuth nos três painéis",
+    detail: "Mesmo provedor para admin, coordenação e colaborador, inclusive menores. O painel muda pela permissão.",
   },
   {
-    title: "Começar a implementação no drp",
-    detail: "O GitHub ramiresGomes/drp já está público. A v1 segue este PRD, com Google OAuth.",
+    title: "Governança no código",
+    detail: "Auditoria em tudo e dupla aprovação só nas quatro ações críticas.",
   },
 ];

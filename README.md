@@ -2,8 +2,6 @@
 
 Definição fechada e PRD do sistema do **Darpe** (Departamento de Assistência Religiosa para Evangelização) da Congregação Cristã no Brasil, Regional Uberlândia-MG.
 
-Produto no GitHub: [ramiresGomes/drp](https://github.com/ramiresGomes/drp).
-
 Este app é o documento vivo da sessão de definição: atores, domínio, fluxos, métricas e requisitos da primeira versão.
 
 ## Decisões de acesso
@@ -12,6 +10,7 @@ Este app é o documento vivo da sessão de definição: atores, domínio, fluxos
 - O painel administrativo usa o mesmo provedor; a restrição é por papel e permissão.
 - Menores também entram com conta Google, após cadastro e consentimento pela secretaria.
 - Cidades da regional são cadastradas no painel. Não há lista fechada no PRD.
+- Dupla aprovação nas quatro ações críticas: superadmin, exclusão LGPD, reabrir presença após o dia, cancelar reunião/ensaio convocado.
 
 ## Como rodar
 
@@ -31,4 +30,4 @@ Abra [http://127.0.0.1:43147](http://127.0.0.1:43147).
 - Fluxos de credenciamento, escala, presença, eventos e batismo
 - PRD da v1
 - Painel de métricas e construtor controlado de relatórios
-- Decisões fechadas e a pendência de dupla aprovação
+- Decisões fechadas, inclusive dupla aprovação

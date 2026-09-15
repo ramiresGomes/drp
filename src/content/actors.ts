@@ -76,8 +76,8 @@ export const clients = [
       "Fechar presença no mesmo dia, inclusive extras fora da escala",
       "Cancelar atendimento com justificativa",
       "Anexar foto e texto livre, sujeitos a moderação",
-      "Corrigir presença depois do encerramento",
-      "Reabrir lista apenas quando a permissão administrativa permitir o fluxo correspondente",
+      "Corrigir presença no mesmo dia, sem segunda aprovação",
+      "Reabrir lista depois do dia só com dupla aprovação administrativa",
     ],
   },
   {
@@ -102,6 +102,6 @@ export const permissionPrinciples = [
   "Quem vincula colaborador a instituição: secretário, ancião ou encarregado regional, após contato fora do sistema.",
   "Quem monta escala: responsável da instituição, encarregados regionais, anciãos e secretários.",
   "Dados pessoais sensíveis ficam no painel administrativo.",
-  "Existe um superadministrador / ancião com poder superior ao secretário comum.",
+  "Existe um superadministrador / ancião com poder superior ao secretário comum. Conceder ou revogar esse papel exige dupla aprovação.",
   "A secretaria do Darpe (secretários + jurídico) responde por incidentes e correções indevidas.",
 ];

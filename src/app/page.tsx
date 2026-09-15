@@ -17,7 +17,7 @@ export default function HomePage() {
       <div className="mb-10 flex flex-wrap gap-3">
         <Button render={<Link href="/prd" />}>Ler o PRD</Button>
         <Button render={<Link href="/decisoes" />} variant="outline">
-          Dupla aprovação
+          Decisões fechadas
         </Button>
       </div>
 

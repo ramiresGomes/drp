@@ -6,5 +6,5 @@ export const NAV_ITEMS = [
   { href: "/fluxos", label: "Fluxos", description: "Credenciamento, escala, presença e eventos" },
   { href: "/prd", label: "PRD", description: "Requisitos da primeira versão" },
   { href: "/metricas", label: "Métricas", description: "Painel inicial e construtor de relatórios" },
-  { href: "/decisoes", label: "Decisões", description: "Fechadas, propostas e pendências" },
+  { href: "/decisoes", label: "Decisões", description: "Regras fechadas da v1" },
 ] as const;

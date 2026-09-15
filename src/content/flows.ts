@@ -42,7 +42,7 @@ export const flows = [
       "No dia, o responsável marca quem participou a partir da escala.",
       "Pode incluir alguém que não estava escalado. A participação extra conta nas métricas da mesma forma.",
       "Foto e texto livre são opcionais, passam por moderação e não podem conter dados médicos, criminais ou disciplinares.",
-      "O registro fecha no mesmo dia. Coordenador corrige depois do encerramento. Administrador pode reabrir a lista.",
+      "O registro fecha no mesmo dia. Coordenador corrige no mesmo dia. Reabrir depois do dia exige dupla aprovação administrativa.",
       "Falta = estava escalado, não compareceu e não justificou.",
       "Ocorrência cancelada permanece nas métricas como cancelada.",
     ],
