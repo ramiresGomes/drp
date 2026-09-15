@@ -1,7 +1,7 @@
 export const recoveryNotes = {
   title: "Continuação da sessão Darpe system definition",
   summary:
-    "O chat original ficou inacessível a partir deste ambiente. O conteúdo abaixo é a transcrição que você colou, já consolidada em definição fechada e PRD. O repositório público do GitHub ramiresGomes não lista um projeto chamado drp; se ele for privado, este workspace serve como base para seguir o PRD até a implementação.",
+    "A transcrição da sessão original foi consolidada neste documento vivo. O repositório de produto é https://github.com/ramiresGomes/drp. Login de todos os painéis: Google OAuth. Cidades da regional entram pelo cadastro administrativo.",
   recovered: [
     "Sistema web com painéis por público, depois PWA para coordenação.",
     "Escopo inicial: Darpe da Regional Uberlândia-MG e cidades da regional.",
@@ -18,6 +18,7 @@ export const closedScope = {
   church: "Congregação Cristã no Brasil",
   regional: "Uberlândia-MG",
   citiesSeed: ["Uberlândia", "Monte Carmelo", "Araxá", "Uberaba"],
+  citiesNote: "Exemplos. A lista oficial é cadastrada no painel.",
   sectors: [
     {
       code: 1,
@@ -40,15 +41,15 @@ export const closedScope = {
 
 export const nextSteps = [
   {
-    title: "Revisar o PRD neste app",
+    title: "Revisar o PRD",
     detail: "Confirme atores, estados, permissões e o recorte da primeira versão.",
   },
   {
-    title: "Fechar as pendências curtas",
-    detail: "Dupla aprovação, lista completa de cidades e o mecanismo de login administrativo.",
+    title: "Fechar a dupla aprovação",
+    detail: "Única pendência de negócio que ainda altera o PRD.",
   },
   {
-    title: "Ligar o repositório drp",
-    detail: "Quando o GitHub drp estiver acessível, a implementação segue o PRD sem reabrir o modelo.",
+    title: "Começar a implementação no drp",
+    detail: "O GitHub ramiresGomes/drp já está público. A v1 segue este PRD, com Google OAuth.",
   },
 ];

@@ -39,10 +39,12 @@ export default function DefinitionPage() {
       <section className="mb-10">
         <h2 className="mb-4 text-2xl">Território da v1</h2>
         <p className="mb-4 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Uberlândia é a cidade-sede da regional. As demais cidades são cadastradas e pertencem a ela.
-          Instituição não sobe nem desce hierarquia de setor: setor classifica, cidade localiza.
-          A comum congregação diz onde a pessoa costuma congregar, sem criar ministérios paralelos.
+          Uberlândia é a cidade-sede da regional. As demais cidades são cadastradas no painel
+          administrativo e pertencem a ela. Instituição não sobe nem desce hierarquia de setor:
+          setor classifica, cidade localiza. A comum congregação diz onde a pessoa costuma
+          congregar, sem criar ministérios paralelos.
         </p>
+        <p className="mb-4 text-sm text-muted-foreground">Exemplos iniciais, não a lista oficial:</p>
         <div className="flex flex-wrap gap-2">
           {closedScope.citiesSeed.map((city) => (
             <span
@@ -53,7 +55,7 @@ export default function DefinitionPage() {
             </span>
           ))}
           <span className="rounded-full border border-dashed border-border px-3 py-1 text-sm text-muted-foreground">
-            demais cidades cadastráveis
+            cadastro pelo painel
           </span>
         </div>
       </section>

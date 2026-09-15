@@ -10,6 +10,9 @@ export const closedDecisions = [
   "Checklist copiado no momento da criação do evento; mudar o modelo não altera eventos antigos.",
   "Notificações só internas, público congelado, com ciência e confirmação.",
   "Dados não são apagados, salvo fluxo LGPD. Secretaria + jurídico respondem por incidentes.",
+  "Autenticação de todos os painéis, inclusive o administrativo, é Google OAuth com e-mail Google. O que muda entre os painéis é a permissão, não o provedor de login.",
+  "Menor colaborador também acessa com conta Google. O cadastro e o consentimento continuam com a secretaria.",
+  "A lista completa de cidades da regional é cadastrada no painel administrativo. Não há lista fechada no PRD.",
 ];
 
 export const dualApprovalProposal = [
@@ -57,23 +60,9 @@ export const dualApprovalProposal = [
 
 export const stillOpen = [
   {
-    id: "auth-admin",
-    question: "Qual é a autenticação rígida do painel administrativo na v1?",
-    proposal: "Google OAuth para todos, com restrição do painel admin a contas e papéis autorizados. 2FA fica para depois, como combinado.",
-  },
-  {
-    id: "minors",
-    question: "Como o menor faz o primeiro acesso?",
-    proposal: "Cadastro feito por secretário, consentimento registrado, acesso Google da própria conta ou de responsável, sem dados extras além dos já obrigatórios.",
-  },
-  {
-    id: "cities",
-    question: "Qual é a lista completa de cidades da regional?",
-    proposal: "Começar com Uberlândia, Monte Carmelo, Araxá e Uberaba, e deixar o cadastro aberto para o restante.",
-  },
-  {
-    id: "github",
-    question: "O repositório GitHub drp está privado?",
-    proposal: "Este workspace concentra definição e PRD. A implementação pode ser copiada para o drp quando o acesso existir.",
+    id: "dual-approval",
+    question: "Quais ações exigem dupla aprovação?",
+    proposal:
+      "A proposta acima continua valendo. Confirme o que entra: superadmin, exclusão LGPD, reabrir presença e cancelar reunião/ensaio. O restante da operação cotidiana fica com um único responsável e auditoria.",
   },
 ];

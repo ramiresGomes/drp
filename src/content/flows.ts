@@ -4,11 +4,11 @@ export const flows = [
     title: "1. Credenciar e vincular",
     steps: [
       "Secretário, ancião ou encarregado cadastra a pessoa com nome, e-mail, telefone, função/atribuição e comum congregação.",
-      "O cadastro cria login automaticamente. Colaborador entra pelo caminho mais simples; administrativo exige segurança maior.",
+      "O cadastro cria a pessoa no sistema. O acesso de todos os painéis é Google OAuth com e-mail Google, inclusive de menores. O painel administrativo só abre para quem tem papel e permissão.",
       "A pessoa recebe funções, competências e permissões. Músico e cantor são mutuamente exclusivos.",
       "Após contato fora do sistema, a autoridade vincula a pessoa às instituições. Não há aceite digital.",
       "Instituições com recadastramento anual recebem data inicial e final no vínculo, com alerta de vencimento.",
-      "Menores podem ser colaboradores. Visitantes sem credenciamento completo não são registrados.",
+      "Menores podem ser colaboradores e entram com conta Google. Visitantes sem credenciamento completo não são registrados.",
     ],
   },
   {

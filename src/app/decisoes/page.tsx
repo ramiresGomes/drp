@@ -11,8 +11,8 @@ export default function DecisionsPage() {
     <div>
       <PageHeader
         kicker="Governança"
-        title="O modelo já pode virar implementação. Restam poucas decisões curtas."
-        description="A dupla aprovação ficou em aberto. A proposta abaixo separa o que muda o indicador oficial do que é rotina da instituição."
+        title="O modelo já pode virar implementação. Resta a dupla aprovação."
+        description="A dupla aprovação é a única pendência de negócio. Login, menores e cidades já estão fechados."
       />
 
       <section className="mb-10">

@@ -54,7 +54,7 @@ export const clients = [
   {
     id: "admin",
     name: "Painel administrativo",
-    surface: "Web, com autenticação mais rígida",
+    surface: "Web, Google OAuth com e-mail Google. O painel é restrito por papel.",
     users: "Secretários, anciãos, jurídico e quem receber permissão equivalente",
     capabilities: [
       "CRUD de funções, pessoas, setores, instituições, cidades e comuns congregação",
@@ -83,7 +83,7 @@ export const clients = [
   {
     id: "member",
     name: "Painel do colaborador",
-    surface: "Web simples, preferencialmente Google OAuth",
+    surface: "Web, Google OAuth — inclusive menores com conta Google",
     users: "Todas as pessoas cadastradas",
     capabilities: [
       "Ver e editar os próprios dados",

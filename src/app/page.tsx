@@ -17,7 +17,7 @@ export default function HomePage() {
       <div className="mb-10 flex flex-wrap gap-3">
         <Button render={<Link href="/prd" />}>Ler o PRD</Button>
         <Button render={<Link href="/decisoes" />} variant="outline">
-          Ver pendências curtas
+          Dupla aprovação
         </Button>
       </div>
 
@@ -38,7 +38,7 @@ export default function HomePage() {
           <CardContent>
             <p className="font-heading text-2xl">Regional {closedScope.regional}</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Cidades cadastráveis. Sem multi-regional.
+              Cidades cadastradas no painel. Sem multi-regional.
             </p>
           </CardContent>
         </Card>

@@ -1,5 +1,5 @@
 export const prd = {
-  version: "0.1",
+  version: "0.2",
   product: "DRP",
   goal: "Organizar o credenciamento, os vínculos, as escalas, as presenças e os indicadores do Darpe da Regional Uberlândia-MG, com painéis distintos para secretaria, coordenação de instituição e colaboradores.",
   outOfScopeV1: [
@@ -18,7 +18,7 @@ export const prd = {
       id: "org",
       title: "Organização territorial",
       stories: [
-        "Como secretário, cadastro cidades da regional, incluindo Monte Carmelo, Araxá, Uberaba e as demais que faltarem.",
+        "Como secretário, cadastro as cidades da regional pelo painel. A lista não vem pré-fechada no PRD.",
         "Como secretário, cadastro comuns congregação sem criar divisão ministerial.",
         "Como secretário, cadastro setores e instituições ligadas a uma única cidade e um único setor.",
         "Como administrador, inativo uma instituição temporariamente sem perder o histórico.",
@@ -28,13 +28,13 @@ export const prd = {
       id: "people",
       title: "Pessoas, funções e acesso",
       stories: [
-        "Como secretário, cadastro uma pessoa com nome, e-mail, telefone, atribuição e comum congregação, e o login é criado.",
-        "Como colaborador, acesso o painel simples via Google OAuth.",
-        "Como administrador, acesso o painel administrativo com autenticação mais rígida.",
+        "Como secretário, cadastro uma pessoa com nome, e-mail Google, telefone, atribuição e comum congregação.",
+        "Como colaborador ou menor, acesso qualquer painel permitido com Google OAuth e e-mail Google.",
+        "Como administrador, uso o mesmo Google OAuth; o painel administrativo só abre se eu tiver papel e permissão.",
         "Como administrador, atribuo várias funções e competências, bloqueando a combinação músico + cantor.",
         "Como administrador, altero o status para ativa, afastada, suspensa, desligada ou falecida.",
         "Como pessoa, edito meus próprios dados visíveis e consulto meu histórico.",
-        "Como menor colaborador, posso ser cadastrado; o termo de consentimento fica registrado.",
+        "Como menor colaborador, sou cadastrado pela secretaria, com consentimento, e acesso com conta Google.",
       ],
     },
     {
