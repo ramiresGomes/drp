@@ -93,6 +93,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SheetTitle className="text-sidebar-foreground">Navegação DRP</SheetTitle>
               </SheetHeader>
               <NavLinks onNavigate={() => setOpen(false)} />
+              <div className="border-t border-sidebar-border p-3">
+                <Link
+                  href="/entrar"
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg bg-sidebar-accent px-3 py-2 text-sm text-sidebar-accent-foreground"
+                >
+                  Abrir o sistema operacional
+                </Link>
+              </div>
             </SheetContent>
           </Sheet>
         </header>
