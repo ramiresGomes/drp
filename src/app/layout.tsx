@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
-import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,11 +20,11 @@ const sourceSerif = Source_Serif_4({
 
 export const metadata: Metadata = {
   title: {
-    default: "DRP — Definição do Darpe Uberlândia",
+    default: "DRP — Darpe Regional Uberlândia",
     template: "%s · DRP",
   },
   description:
-    "Definição fechada e PRD do sistema DRP para o Darpe da Regional Uberlândia-MG.",
+    "Sistema operacional do Darpe da Congregação Cristã no Brasil, Regional Uberlândia-MG.",
 };
 
 export default function RootLayout({
@@ -38,9 +37,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
-        <AppShell>{children}</AppShell>
-      </body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

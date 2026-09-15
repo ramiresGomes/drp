@@ -64,6 +64,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ScrollArea className="flex-1">
           <NavLinks />
         </ScrollArea>
+        <div className="border-t border-sidebar-border p-3">
+          <Link
+            href="/entrar"
+            className="block rounded-lg bg-sidebar-accent px-3 py-2 text-sm text-sidebar-accent-foreground"
+          >
+            Abrir o sistema operacional
+          </Link>
+        </div>
       </aside>
 
       <div className="md:pl-72">

@@ -1,33 +1,50 @@
 # DRP — Darpe Regional Uberlândia
 
-Definição fechada e PRD do sistema do **Darpe** (Departamento de Assistência Religiosa para Evangelização) da Congregação Cristã no Brasil, Regional Uberlândia-MG.
+Sistema operacional do **Darpe** (Departamento de Assistência Religiosa para Evangelização) da Congregação Cristã no Brasil, **Regional Uberlândia-MG**.
 
-Este app é o documento vivo da sessão de definição: atores, domínio, fluxos, métricas e requisitos da primeira versão.
+Há um cadastro Darpe por pessoa, vínculo institucional para autorizar escala, presença no mesmo dia do atendimento e eventos regionais obrigatórios. A definição fechada e o PRD continuam no app, em `/definicao` e `/prd`.
 
-## Decisões de acesso
+## Painéis
 
-- Todos os painéis autenticam com **Google OAuth** e e-mail Google.
-- O painel administrativo usa o mesmo provedor; a restrição é por papel e permissão.
-- Menores também entram com conta Google, após cadastro e consentimento pela secretaria.
-- Cidades da regional são cadastradas no painel. Não há lista fechada no PRD.
-- Dupla aprovação nas quatro ações críticas: superadmin, exclusão LGPD, reabrir presença após o dia, cancelar reunião/ensaio convocado.
+- **Secretaria** — pessoas, cidades, comuns, instituições, vínculos, séries, eventos, avisos, dupla aprovação, auditoria e relatórios.
+- **Coordenação** — escala só de vinculados, cancelamento justificado, presença no mesmo dia, participação extra.
+- **Colaborador** — agenda, justificativa, avisos (ciência/confirmação) e dados próprios.
+
+Todos os painéis usam o mesmo Google OAuth. Nesta prévia local, se `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` não estiverem definidos, o login de demonstração por e-mail cadastrado permanece disponível.
 
 ## Como rodar
 
 ```bash
 npm install
-npm run dev -- --hostname 127.0.0.1 --port 43147
+cp .env.example .env
+npm run db:setup
+npm run dev
 ```
 
 Abra [http://127.0.0.1:43147](http://127.0.0.1:43147).
 
-## O que está neste app
+O banco local é SQLite (`prisma/dev.db`). Em produção na Vercel será preciso um banco persistente e as chaves Google.
 
-- Visão geral da sessão recuperada
-- Modelo conceitual da regional
-- Painéis administrativo, de coordenação e do colaborador
-- Entidades, estados e relacionamentos
-- Fluxos de credenciamento, escala, presença, eventos e batismo
-- PRD da v1
-- Painel de métricas e construtor controlado de relatórios
-- Decisões fechadas, inclusive dupla aprovação
+## Contas de demonstração
+
+| E-mail | Perfil |
+| --- | --- |
+| `secretaria@darpe.local` | Ramires Gomes — secretário / superadmin |
+| `anciao@darpe.local` | João Batista — ancião coordenador |
+| `coordenacao@darpe.local` | Pedro Henrique — responsável do Hospital de Clínicas |
+| `colaboradora@darpe.local` | Ana Clara — colaboradora / cantora |
+| `encarregada@darpe.local` | Maria das Dores — encarregada regional / músico |
+| `juridico@darpe.local` | Helena Souza — jurídico |
+| `menor@darpe.local` | Lucas Silva — colaborador menor / músico |
+
+Não há senha: o e-mail precisa existir no cadastro Darpe.
+
+## Regras da v1 já no sistema
+
+- Instituição tem uma cidade e um setor.
+- Músico e cantor não se combinam.
+- Sem vínculo ativo não há escala.
+- Sem remarcação; cancelamento exige justificativa.
+- Presença e fechamento da lista no mesmo dia.
+- Evento obrigatório vale para toda a regional.
+- Dupla aprovação: superadmin, exclusão LGPD, reabrir presença após o dia, cancelar reunião/ensaio convocado.

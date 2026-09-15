@@ -1,5 +1,5 @@
 export const NAV_ITEMS = [
-  { href: "/", label: "Visão geral", description: "Onde paramos e o que já está fechado" },
+  { href: "/definicao", label: "Visão geral", description: "Onde paramos e o que já está fechado" },
   { href: "/definicao", label: "Definição", description: "Modelo conceitual da Regional Uberlândia" },
   { href: "/atores", label: "Atores e painéis", description: "Funções, competências e clientes" },
   { href: "/dominio", label: "Domínio", description: "Entidades, estados e relacionamentos" },

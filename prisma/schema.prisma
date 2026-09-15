@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model City {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  isSeat        Boolean        @default(false)
+  congregations Congregation[]
+  institutions  Institution[]
+  createdAt     DateTime       @default(now())
+}
+
+model Congregation {
+  id        String   @id @default(cuid())
+  name      String
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id])
+  people    Person[]
+  createdAt DateTime @default(now())
+}
+
+model Sector {
+  id           String        @id @default(cuid())
+  code         Int           @unique
+  name         String
+  institutions Institution[]
+}
+
+model Person {
+  id                   String    @id @default(cuid())
+  name                 String
+  email                String    @unique
+  phone                String
+  status               String    @default("ACTIVE")
+  birthDate            DateTime?
+  isMinor              Boolean   @default(false)
+  consentAt            DateTime?
+  congregationId       String
+  congregation         Congregation @relation(fields: [congregationId], references: [id])
+  isSuperAdmin         Boolean   @default(false)
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  roles                PersonRole[]
+  competencies         PersonCompetency[]
+  links                InstitutionLink[]
+  responsibilities     InstitutionResponsible[]
+  scaleEntries         ScaleEntry[]
+  participations       Participation[]
+  justifications       Justification[]
+  availability         Availability[]
+  notifications        NotificationReceipt[]
+  auditLogs            AuditLog[]            @relation("Actor")
+  approvalRequested    DualApproval[]        @relation("RequestedBy")
+  approvalDecided      DualApproval[]        @relation("DecidedBy")
+  eventsCreated        RegionalEvent[]
+}
+
+model PersonRole {
+  id        String    @id @default(cuid())
+  personId  String
+  person    Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+  role      String
+  startAt   DateTime  @default(now())
+  endAt     DateTime?
+}
+
+model PersonCompetency {
+  id           String @id @default(cuid())
+  personId     String
+  person       Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  competency   String
+  @@unique([personId, competency])
+}
+
+model Institution {
+  id                       String   @id @default(cuid())
+  name                     String
+  address                  String
+  mapsUrl                  String?
+  phone                    String?
+  capacity                 Int?
+  notes                    String?
+  active                   Boolean  @default(true)
+  requiresRecadastramento  Boolean  @default(false)
+  cityId                   String
+  city                     City     @relation(fields: [cityId], references: [id])
+  sectorId                 String
+  sector                   Sector   @relation(fields: [sectorId], references: [id])
+  links                    InstitutionLink[]
+  responsibles             InstitutionResponsible[]
+  series                   RecurringSeries[]
+  createdAt                DateTime @default(now())
+}
+
+model InstitutionResponsible {
+  id             String       @id @default(cuid())
+  institutionId  String
+  institution    Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  personId       String
+  person         Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  @@unique([institutionId, personId])
+}
+
+model InstitutionLink {
+  id             String       @id @default(cuid())
+  institutionId  String
+  institution    Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  personId       String
+  person         Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  startAt        DateTime     @default(now())
+  endAt          DateTime?
+  justification  String?
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  @@unique([institutionId, personId])
+}
+
+model RecurringSeries {
+  id             String       @id @default(cuid())
+  institutionId  String
+  institution    Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  startDate           DateTime
+  intervalDays        Int          @default(15)
+  label               String
+  active              Boolean      @default(true)
+  justifyDaysBefore   Int          @default(2)
+  occurrences         Occurrence[]
+}
+
+model Occurrence {
+  id            String   @id @default(cuid())
+  seriesId      String
+  series        RecurringSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  date          DateTime
+  cancelled     Boolean  @default(false)
+  cancelReason  String?
+  cancelledById String?
+  closedAt      DateTime?
+  notes         String?
+  photoUrl      String?
+  photoApproved Boolean  @default(false)
+  scale         ScaleEntry[]
+  participations Participation[]
+  justifications Justification[]
+  @@unique([seriesId, date])
+}
+
+model ScaleEntry {
+  id            String     @id @default(cuid())
+  occurrenceId  String
+  occurrence    Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  personId      String
+  person        Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+  @@unique([occurrenceId, personId])
+}
+
+model Participation {
+  id            String     @id @default(cuid())
+  occurrenceId  String
+  occurrence    Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  personId      String
+  person        Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  state         String
+  extra         Boolean    @default(false)
+  recordedAt    DateTime   @default(now())
+  @@unique([occurrenceId, personId])
+}
+
+model Justification {
+  id            String     @id @default(cuid())
+  occurrenceId  String?
+  occurrence    Occurrence? @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  eventId       String?
+  event         RegionalEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  personId      String
+  person        Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  reason        String
+  createdAt     DateTime   @default(now())
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  weekday   Int
+  available Boolean  @default(true)
+  note      String?
+}
+
+model EventType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  mandatory   Boolean  @default(false)
+  checklist   String
+  events      RegionalEvent[]
+}
+
+model RegionalEvent {
+  id            String    @id @default(cuid())
+  typeId        String
+  type          EventType @relation(fields: [typeId], references: [id])
+  title         String
+  startsAt      DateTime
+  endsAt        DateTime
+  location      String
+  mandatory     Boolean
+  checkinToken  String    @unique
+  createdById   String
+  createdBy     Person    @relation(fields: [createdById], references: [id])
+  checklistJson String
+  cancelled     Boolean   @default(false)
+  cancelReason  String?
+  presidingElder String?
+  baptisms      Baptism[]
+  attendances   EventAttendance[]
+  justifications Justification[]
+}
+
+model EventAttendance {
+  id        String        @id @default(cuid())
+  eventId   String
+  event     RegionalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  personId  String
+  present   Boolean       @default(true)
+  manual    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  @@unique([eventId, personId])
+}
+
+model Baptism {
+  id        String        @id @default(cuid())
+  eventId   String
+  event     RegionalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fullName  String
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  title           String
+  body            String
+  audience        String
+  kind            String   @default("INFO")
+  requiresAck     Boolean  @default(false)
+  requiresConfirm Boolean  @default(false)
+  scheduledAt     DateTime?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  receipts        NotificationReceipt[]
+}
+
+model NotificationReceipt {
+  id              String       @id @default(cuid())
+  notificationId  String
+  notification    Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  personId        String
+  person          Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  readAt          DateTime?
+  scienceAt       DateTime?
+  confirmedAt     DateTime?
+  @@unique([notificationId, personId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      Person?  @relation("Actor", fields: [actorId], references: [id])
+  action     String
+  entity     String
+  entityId   String
+  details    String
+  createdAt  DateTime @default(now())
+}
+
+model DualApproval {
+  id            String   @id @default(cuid())
+  type          String
+  entity        String
+  entityId      String
+  payload       String
+  reason        String
+  status        String   @default("PENDING")
+  requestedById String
+  requestedBy   Person   @relation("RequestedBy", fields: [requestedById], references: [id])
+  decidedById   String?
+  decidedBy     Person?  @relation("DecidedBy", fields: [decidedById], references: [id])
+  createdAt     DateTime @default(now())
+  decidedAt     DateTime?
+}
