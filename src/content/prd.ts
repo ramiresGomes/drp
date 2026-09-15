@@ -1,0 +1,140 @@
+export const prd = {
+  version: "0.1",
+  product: "DRP",
+  goal: "Organizar o credenciamento, os vínculos, as escalas, as presenças e os indicadores do Darpe da Regional Uberlândia-MG, com painéis distintos para secretaria, coordenação de instituição e colaboradores.",
+  outOfScopeV1: [
+    "Outras regionais e isolamento multi-tenant",
+    "Aplicativo nativo; PWA fica como evolução do painel de coordenação",
+    "Notificações por e-mail ou WhatsApp",
+    "Autenticação em dois fatores",
+    "Visitantes sem credenciamento",
+    "Remarcação de atendimento",
+    "Pedido formal de substituição",
+    "Check-in e check-out com horário",
+    "Contato de emergência",
+  ],
+  modules: [
+    {
+      id: "org",
+      title: "Organização territorial",
+      stories: [
+        "Como secretário, cadastro cidades da regional, incluindo Monte Carmelo, Araxá, Uberaba e as demais que faltarem.",
+        "Como secretário, cadastro comuns congregação sem criar divisão ministerial.",
+        "Como secretário, cadastro setores e instituições ligadas a uma única cidade e um único setor.",
+        "Como administrador, inativo uma instituição temporariamente sem perder o histórico.",
+      ],
+    },
+    {
+      id: "people",
+      title: "Pessoas, funções e acesso",
+      stories: [
+        "Como secretário, cadastro uma pessoa com nome, e-mail, telefone, atribuição e comum congregação, e o login é criado.",
+        "Como colaborador, acesso o painel simples via Google OAuth.",
+        "Como administrador, acesso o painel administrativo com autenticação mais rígida.",
+        "Como administrador, atribuo várias funções e competências, bloqueando a combinação músico + cantor.",
+        "Como administrador, altero o status para ativa, afastada, suspensa, desligada ou falecida.",
+        "Como pessoa, edito meus próprios dados visíveis e consulto meu histórico.",
+        "Como menor colaborador, posso ser cadastrado; o termo de consentimento fica registrado.",
+      ],
+    },
+    {
+      id: "links",
+      title: "Vínculos e recadastramento",
+      stories: [
+        "Como secretário, ancião ou encarregado, vinculo um colaborador já credenciado a uma ou várias instituições.",
+        "Como sistema, registro quem vinculou, quando e a justificativa opcional.",
+        "Como administrador, informo vigência inicial e final somente nas instituições que exigem recadastramento.",
+        "Como administrador, recebo alerta de documentos e recadastramentos próximos do vencimento.",
+      ],
+    },
+    {
+      id: "schedule",
+      title: "Séries, escalas e disponibilidade",
+      stories: [
+        "Como administrador, crio uma série recorrente a partir de uma data, por exemplo sábado a cada 15 dias.",
+        "Como sistema, gero ocorrências com pelo menos 10 dias de antecedência.",
+        "Como coordenador, monto a escala só com pessoas vinculadas e disponíveis, respeitando capacidade máxima.",
+        "Como colaborador, informo disponibilidade recorrente e bloqueios.",
+        "Como sistema, aviso conflito de horário.",
+        "Como colaborador vinculado, vejo a escala da instituição.",
+        "Como colaborador, justifico ausência até o prazo configurado.",
+        "Como coordenador, troco a pessoa na escala sem fluxo de aprovação.",
+      ],
+    },
+    {
+      id: "attendance",
+      title: "Presença e encerramento",
+      stories: [
+        "Como coordenador, marco presenças no dia do atendimento e fecho o registro no mesmo dia.",
+        "Como coordenador, incluo participante extra e isso conta nas métricas.",
+        "Como coordenador, anexo foto ou arquivo permitido, que só fica visível após moderação.",
+        "Como coordenador, corrijo uma presença já encerrada.",
+        "Como secretário, reabro a lista de presença.",
+        "Como sistema, classifico falta somente se a pessoa estava escalada, não veio e não justificou.",
+      ],
+    },
+    {
+      id: "events",
+      title: "Eventos obrigatórios, checklist e QR",
+      stories: [
+        "Como secretário, configuro tipos de evento, obrigatoriedade, público e modelo de checklist.",
+        "Como secretário, crio um evento e recebo o checklist copiado, sem herdar mudanças futuras do modelo.",
+        "Como organizador, marco itens, responsáveis, prazos e evidências opcionais.",
+        "Como colaborador, leio o QR no local; o sistema valida login e localização.",
+        "Como secretário, registro presença manual de quem não tem acesso.",
+        "Como sistema, envio lembretes automáticos e convoco quem for cadastrado depois.",
+      ],
+    },
+    {
+      id: "baptism",
+      title: "Batismos",
+      stories: [
+        "Como secretário, agendo um batismo e registro o ancião presidente.",
+        "Como coordenador, informo os nomes completos dos batizandos somente neste evento.",
+        "Como administrador, consulto o histórico de batismos.",
+      ],
+    },
+    {
+      id: "comms",
+      title: "Notificações",
+      stories: [
+        "Como administrador, envio ou agendo notificação interna por função, competência, instituição, setor ou cidade.",
+        "Como sistema, congelo o público no momento do envio.",
+        "Como destinatário, registro leitura, ciência e confirmação.",
+        "Como colaborador, desativo preferências opcionais sem desligar avisos obrigatórios.",
+      ],
+    },
+    {
+      id: "reports",
+      title: "Relatórios e painel",
+      stories: [
+        "Como administrador, cruzo dimensões e métricas em um construtor controlado.",
+        "Como administrador, exporto PDF e planilha, com anonimização em relatórios amplos.",
+        "Como administrador, salvo modelos de relatório.",
+        "Como administrador, vejo no início as pendências e os indicadores combinados.",
+      ],
+    },
+    {
+      id: "governance",
+      title: "Governança e LGPD",
+      stories: [
+        "Como sistema, apenas inativo registros; exclusão definitiva só por solicitação LGPD.",
+        "Como titular, envio pedido de acesso, correção ou exclusão para os administradores.",
+        "Como secretaria, registro consentimento para dados religiosos e para fotos.",
+        "Como sistema, gravo auditoria de permissões, vínculos, escalas, presenças, justificativas e exclusões.",
+        "Como jurídico, acompanho incidentes junto aos secretários.",
+      ],
+    },
+  ],
+};
+
+export const acceptance = [
+  "Uma instituição nunca fica em duas cidades ou dois setores.",
+  "Uma pessoa pode ter várias funções, mas músico e cantor não coexistam.",
+  "Ninguém entra em escala sem vínculo com a instituição.",
+  "Ocorrências existem 10 dias à frente para séries ativas.",
+  "Cancelamento exige justificativa e aparece como cancelado nas métricas.",
+  "QR Code não registra presença sem login válido e localização compatível.",
+  "Relatório amplo não expõe identificadores pessoais sem permissão explícita.",
+  "Exclusão física de pessoa só ocorre após fluxo LGPD.",
+];
