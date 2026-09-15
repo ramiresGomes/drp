@@ -145,11 +145,11 @@ export default async function InstitutionCoordinationPage({
                         )}
                       </div>
 
-                      {!occurrence.closedAt ? (
+                      {!occurrence.closedAt && extras.length > 0 ? (
                         <form action={addScaleEntry} className="mt-4 flex flex-col gap-2 sm:flex-row">
                           <input type="hidden" name="occurrenceId" value={occurrence.id} />
                           <select className={controlClass} name="personId" required>
-                            {linked.map((link) => (
+                            {extras.map((link) => (
                               <option key={link.id} value={link.personId}>
                                 {link.person.name}
                               </option>
