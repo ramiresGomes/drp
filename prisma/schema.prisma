@@ -68,6 +68,9 @@ model Person {
   eventAttendances     EventAttendance[]
   lgpdRequests         LgpdRequest[]
   reportTemplates      ReportTemplate[]
+  linksCreated         InstitutionLink[] @relation("LinkCreator")
+  incidentsOpened      Incident[]        @relation("IncidentAuthor")
+  incidentsClosed      Incident[]        @relation("IncidentCloser")
 }
 
 model PersonRole {
@@ -126,6 +129,7 @@ model InstitutionLink {
   endAt          DateTime?
   justification  String?
   createdById    String?
+  createdBy      Person?      @relation("LinkCreator", fields: [createdById], references: [id])
   createdAt      DateTime     @default(now())
   @@unique([institutionId, personId])
 }
@@ -293,13 +297,28 @@ model Notification {
   title           String
   body            String
   audience        String
+  audienceRef     String?
   kind            String   @default("INFO")
   requiresAck     Boolean  @default(false)
   requiresConfirm Boolean  @default(false)
   scheduledAt     DateTime?
+  sentAt          DateTime?
   createdById     String?
   createdAt       DateTime @default(now())
   receipts        NotificationReceipt[]
+}
+
+model Incident {
+  id          String   @id @default(cuid())
+  title       String
+  details     String
+  status      String   @default("OPEN")
+  createdById String
+  createdBy   Person   @relation("IncidentAuthor", fields: [createdById], references: [id])
+  closedById  String?
+  closedBy    Person?  @relation("IncidentCloser", fields: [closedById], references: [id])
+  closedAt    DateTime?
+  createdAt   DateTime @default(now())
 }
 
 model NotificationReceipt {

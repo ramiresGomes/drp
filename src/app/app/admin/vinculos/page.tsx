@@ -19,7 +19,7 @@ export default async function LinksPage({
   const params = await searchParams;
   const [links, people, institutions] = await Promise.all([
     prisma.institutionLink.findMany({
-      include: { person: true, institution: { include: { city: true } } },
+      include: { person: true, institution: { include: { city: true } }, createdBy: true },
       orderBy: { createdAt: "desc" },
     }),
     prisma.person.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
@@ -91,6 +91,7 @@ export default async function LinksPage({
                   {` · início ${formatDay(link.startAt)}`}
                   {link.endAt ? ` · vigência até ${formatDay(link.endAt)}` : ""}
                   {link.justification ? ` · ${link.justification}` : ""}
+                  {link.createdBy ? ` · por ${link.createdBy.name}` : ""}
                 </p>
               </div>
               {isLinkActive(link) ? (

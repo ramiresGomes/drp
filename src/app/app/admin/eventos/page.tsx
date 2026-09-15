@@ -179,6 +179,7 @@ export default async function EventsPage({
                   </ul>
                   <form action={addBaptismName} className="mt-2 flex gap-2">
                     <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="from" value="/app/admin/eventos" />
                     <input className={controlClass} name="fullName" placeholder="Nome completo" required />
                     <Button type="submit" variant="outline">
                       Incluir nome

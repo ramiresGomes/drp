@@ -43,7 +43,7 @@ export const nextSteps = [
   {
     title: "Operação cotidiana da v1",
     detail:
-      "Cadastros, vínculos, escalas, presença no mesmo dia, check-in QR, foto com moderação, modelos de relatório, bloqueios, pedidos LGPD do titular e checklist com responsável já estão no sistema.",
+      "Cadastros, escalas, presença, QR, foto, LGPD, modelos de relatório, PDF/CSV, avisos por recorte, incidentes, histórico do titular e escala visível ao vinculado já estão no sistema.",
   },
   {
     title: "Google OAuth em produção",

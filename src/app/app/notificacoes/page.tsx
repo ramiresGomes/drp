@@ -10,7 +10,12 @@ export default async function MemberNotificationsPage() {
   const receipts = await prisma.notificationReceipt.findMany({
     where: {
       personId: person.id,
-      ...(person.muteOptionalNotifications ? { notification: { kind: { not: "INFO" } } } : {}),
+      notification: {
+        AND: [
+          { OR: [{ scheduledAt: null }, { scheduledAt: { lte: new Date() } }] },
+          ...(person.muteOptionalNotifications ? [{ kind: { not: "INFO" } }] : []),
+        ],
+      },
     },
     include: { notification: true },
     orderBy: { notification: { createdAt: "desc" } },

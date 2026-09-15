@@ -55,6 +55,7 @@ export default async function ReportsPage({
 
   const query = reportQuery({ ...params, fato, anonimizado: anonymized ? "1" : "0" });
   const exportHref = `/api/relatorios/export${query.size ? `?${query.toString()}` : ""}`;
+  const pdfHref = `/relatorio-pdf${query.size ? `?${query.toString()}` : ""}`;
 
   return (
     <div>
@@ -112,6 +113,9 @@ export default async function ReportsPage({
           <Button render={<Link href={exportHref} />} variant="secondary">
             Exportar CSV
           </Button>
+          <Button render={<Link href={pdfHref} />} variant="outline">
+            Exportar PDF
+          </Button>
         </div>
       </form>
 
@@ -166,6 +170,7 @@ export default async function ReportsPage({
                 <th className="px-3 py-2 font-medium">Setor</th>
                 <th className="px-3 py-2 font-medium">Situação</th>
                 <th className="px-3 py-2 font-medium">Presentes</th>
+                <th className="px-3 py-2 font-medium">Extras</th>
                 <th className="px-3 py-2 font-medium">Faltas</th>
                 <th className="px-3 py-2 font-medium">Justificados</th>
                 {!anonymized ? <th className="px-3 py-2 font-medium">Pessoas</th> : null}
@@ -181,7 +186,8 @@ export default async function ReportsPage({
                   <td className="px-3 py-2">
                     {item.cancelled ? "Cancelado" : item.closedAt ? "Realizado" : "Previsto"}
                   </td>
-                  <td className="px-3 py-2">{item.participations.filter((row) => row.state === "PRESENTE").length}</td>
+                  <td className="px-3 py-2">{item.participations.filter((row) => row.state === "PRESENTE" && !row.extra).length}</td>
+                  <td className="px-3 py-2">{item.participations.filter((row) => row.state === "PRESENTE" && row.extra).length}</td>
                   <td className="px-3 py-2">{item.participations.filter((row) => row.state === "AUSENTE").length}</td>
                   <td className="px-3 py-2">{item.participations.filter((row) => row.state === "JUSTIFICADO").length}</td>
                   {!anonymized ? (

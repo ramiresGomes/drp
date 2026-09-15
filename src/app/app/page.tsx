@@ -32,7 +32,12 @@ export default async function AppHomePage() {
       where: {
         personId: person.id,
         readAt: null,
-        ...(person.muteOptionalNotifications ? { notification: { kind: { not: "INFO" } } } : {}),
+        notification: {
+          AND: [
+            { OR: [{ scheduledAt: null }, { scheduledAt: { lte: new Date() } }] },
+            ...(person.muteOptionalNotifications ? [{ kind: { not: "INFO" } }] : []),
+          ],
+        },
       },
     }),
     isAdmin(person) ? getOperationalPendencies() : Promise.resolve(null),
@@ -41,7 +46,8 @@ export default async function AppHomePage() {
   const previstos = occurrences.filter((item) => !item.cancelled && !item.closedAt).length;
   const realizados = occurrences.filter((item) => item.closedAt).length;
   const cancelados = occurrences.filter((item) => item.cancelled).length;
-  const presentes = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "PRESENTE").length;
+  const presentes = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "PRESENTE" && !item.extra).length;
+  const extras = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "PRESENTE" && item.extra).length;
   const ausentes = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "AUSENTE").length;
   const justificadas = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "JUSTIFICADO").length;
   const todayOpen = occurrences.filter(
@@ -65,8 +71,8 @@ export default async function AppHomePage() {
         <Metric title="Cancelados" value={cancelados} hint="Permanecem cancelados nas métricas" />
         <Metric
           title="Presença"
-          value={presentes + ausentes + justificadas === 0 ? "—" : `${presentes}`}
-          hint={`${ausentes} faltas · ${justificadas} justificadas`}
+          value={presentes + extras + ausentes + justificadas === 0 ? "—" : `${presentes}`}
+          hint={`${extras} extras · ${ausentes} faltas · ${justificadas} justificadas`}
         />
       </section>
 
@@ -78,6 +84,7 @@ export default async function AppHomePage() {
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>{unread} aviso(s) sem leitura.</p>
             {isAdmin(person) ? <p>{pendingApprovals} pedido(s) de dupla aprovação.</p> : null}
+            {isAdmin(person) && pendencies ? <p>{pendencies.openIncidents} incidente(s) em aberto.</p> : null}
             <p>{todayOpen.length} atendimento(s) de hoje ainda sem lista fechada.</p>
             {unread === 0 && pendingApprovals === 0 && todayOpen.length === 0 ? (
               <p>Nada pendente neste momento.</p>
@@ -235,6 +242,15 @@ export default async function AppHomePage() {
             </CardContent>
           </Card>
         </section>
+      ) : null}
+
+      {pendencies && pendencies.openIncidents > 0 ? (
+        <p className="mb-8 text-sm text-muted-foreground">
+          Há incidentes abertos.{" "}
+          <Link className="underline-offset-4 hover:underline" href="/app/admin/incidentes">
+            Abrir incidentes
+          </Link>
+        </p>
       ) : null}
     </div>
   );

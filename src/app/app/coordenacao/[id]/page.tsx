@@ -210,7 +210,7 @@ export default async function InstitutionCoordinationPage({
                           </p>
                         ) : (
                           <p className="text-sm text-muted-foreground">
-                            Só fica visível no sistema depois da moderação.
+                            Só fica visível no sistema depois da moderação. JPEG, PNG, WebP, PDF, DOCX ou planilha.
                           </p>
                         )}
                         {occurrence.photoApproved && occurrence.photoUrl ? (
@@ -218,7 +218,7 @@ export default async function InstitutionCoordinationPage({
                             Abrir arquivo aprovado
                           </a>
                         ) : null}
-                        <input className="text-sm" type="file" name="photo" accept="image/jpeg,image/png,image/webp,application/pdf" />
+                        <input className="text-sm" type="file" name="photo" accept="image/jpeg,image/png,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
                         <Button type="submit" variant="outline">
                           Enviar para moderação
                         </Button>

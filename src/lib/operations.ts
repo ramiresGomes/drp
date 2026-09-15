@@ -8,7 +8,7 @@ export async function getOperationalPendencies() {
   const inTenDays = addDays(now, 10);
   const inThirtyDays = addDays(now, 30);
 
-  const [emptyScales, expiringLinks, upcomingEvents, pendingPhotos, expiringDocuments, pendingLgpd] = await Promise.all([
+  const [emptyScales, expiringLinks, upcomingEvents, pendingPhotos, expiringDocuments, pendingLgpd, openIncidents] = await Promise.all([
     prisma.occurrence.findMany({
       where: {
         cancelled: false,
@@ -45,6 +45,7 @@ export async function getOperationalPendencies() {
       take: 8,
     }),
     prisma.lgpdRequest.count({ where: { status: "PENDING" } }),
+    prisma.incident.count({ where: { status: "OPEN" } }),
   ]);
 
   const delayedChecklists = upcomingEvents
@@ -62,5 +63,6 @@ export async function getOperationalPendencies() {
     pendingPhotos,
     expiringDocuments,
     pendingLgpd,
+    openIncidents,
   };
 }

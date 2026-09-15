@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/app/admin/notificacoes", label: "Avisos" },
   { href: "/app/admin/moderacao", label: "Moderação" },
   { href: "/app/admin/lgpd", label: "LGPD" },
+  { href: "/app/admin/incidentes", label: "Incidentes" },
   { href: "/app/admin/aprovacoes", label: "Dupla aprovação" },
   { href: "/app/admin/auditoria", label: "Auditoria" },
   { href: "/app/admin/relatorios", label: "Relatórios" },

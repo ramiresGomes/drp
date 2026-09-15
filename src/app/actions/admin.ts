@@ -9,10 +9,11 @@ import { prisma } from "@/lib/db";
 import { checked, fail, field, ok, optionalDate } from "@/lib/forms";
 import { parseCoordinate } from "@/lib/geo";
 import { STATUS_LABELS } from "@/lib/labels";
-import { musicianSingerConflict } from "@/lib/permissions";
+import { canUseCoordinatorPanel, isAdmin, musicianSingerConflict } from "@/lib/permissions";
 import { ensureOccurrences } from "@/lib/occurrences";
+import { deliverNotification, resolveAudienceRef } from "@/lib/notifications";
 import { reportQuery, type ReportFilters } from "@/lib/reports";
-import { requireAdmin, requireLinker } from "@/lib/session";
+import { requireAdmin, requireLinker, requirePerson } from "@/lib/session";
 
 function nextWeekday(weekday: number, from = new Date()) {
   const date = new Date(from);
@@ -377,13 +378,21 @@ export async function toggleChecklistItem(formData: FormData) {
 }
 
 export async function addBaptismName(formData: FormData) {
-  const actor = await requireAdmin();
+  const actor = await requirePerson();
+  if (!isAdmin(actor) && !canUseCoordinatorPanel(actor)) {
+    fail("/app/agenda", "Sem permissão para registrar batizando.");
+  }
   const eventId = field(formData, "eventId");
   const fullName = field(formData, "fullName");
-  if (!eventId || !fullName) fail("/app/admin/eventos", "Informe o nome do batizando.");
+  const from = field(formData, "from") || "/app/admin/eventos";
+  if (!eventId || !fullName) fail(from, "Informe o nome do batizando.");
+  const event = await prisma.regionalEvent.findUnique({ where: { id: eventId }, include: { type: true } });
+  if (!event || event.cancelled) fail(from, "Evento não encontrado.");
   await prisma.baptism.create({ data: { eventId, fullName } });
   await audit(actor.id, "ADD_BAPTISM", "RegionalEvent", eventId, fullName);
   revalidatePath("/app/admin/eventos");
+  revalidatePath("/app/agenda");
+  ok(from);
 }
 
 export async function markEventAttendance(formData: FormData) {
@@ -405,46 +414,40 @@ export async function createNotification(formData: FormData) {
   const title = field(formData, "title");
   const body = field(formData, "body");
   const audience = field(formData, "audience") || "todos";
-  const scheduledAt = field(formData, "scheduledAt");
+  const audienceRef = resolveAudienceRef(audience, formData);
+  const scheduledAt = optionalDate(formData, "scheduledAt");
   if (!title || !body) fail("/app/admin/notificacoes", "Título e texto são obrigatórios.");
+  if (["papel", "competencia", "instituicao", "setor", "cidade"].includes(audience) && !audienceRef) {
+    fail("/app/admin/notificacoes", "Informe o recorte do público.");
+  }
 
   const kind = checked(formData, "mandatory") ? "MANDATORY" : "INFO";
-  const people = await prisma.person.findMany({
-    where: { status: "ACTIVE" },
-    include: { competencies: true, links: true, roles: true },
-  });
-  const adminRoles = ["SECRETARIO", "ANCIAO_COORDENADOR", "ANCIAO_COMPLEMENTAR", "JURIDICO", "ENCARREGADO_REGIONAL"];
-  const audiencePeople = people.filter((person) => {
-    if (audience === "todos") return true;
-    if (audience === "admin") {
-      return person.isSuperAdmin || person.roles.some((item) => adminRoles.includes(item.role));
-    }
-    if (audience === "vinculados") return person.links.some((link) => !link.endAt || link.endAt > new Date());
-    if (audience === "musicos") return person.competencies.some((item) => item.competency === "MUSICO");
-    return true;
-  });
-
+  const sendNow = !scheduledAt || scheduledAt <= new Date();
   const notification = await prisma.notification.create({
     data: {
       title,
       body,
       audience,
+      audienceRef,
       kind,
       requiresAck: checked(formData, "requiresAck") || kind === "MANDATORY",
       requiresConfirm: checked(formData, "requiresConfirm"),
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      scheduledAt,
       createdById: actor.id,
-      receipts: {
-        create: audiencePeople
-          .filter((person) => kind === "MANDATORY" || !person.muteOptionalNotifications)
-          .map((person) => ({ personId: person.id })),
-      },
     },
   });
-  await audit(actor.id, "CREATE_NOTIFICATION", "Notification", notification.id, title);
+  if (sendNow) await deliverNotification(notification.id);
+  await audit(
+    actor.id,
+    sendNow ? "CREATE_NOTIFICATION" : "SCHEDULE_NOTIFICATION",
+    "Notification",
+    notification.id,
+    title,
+  );
   revalidatePath("/app/admin/notificacoes");
   revalidatePath("/app/notificacoes");
   revalidatePath("/app");
+  ok("/app/admin/notificacoes");
 }
 
 export async function requestDualApproval(formData: FormData) {
@@ -651,4 +654,31 @@ export async function deleteReportTemplate(formData: FormData) {
   await audit(actor.id, "DELETE_REPORT_TEMPLATE", "ReportTemplate", id, "Modelo removido");
   revalidatePath("/app/admin/relatorios");
   ok("/app/admin/relatorios");
+}
+
+export async function createIncident(formData: FormData) {
+  const actor = await requireAdmin();
+  const title = field(formData, "title");
+  const details = field(formData, "details");
+  if (!title || !details) fail("/app/admin/incidentes", "Informe o título e o relato do incidente.");
+  const incident = await prisma.incident.create({
+    data: { title, details, createdById: actor.id },
+  });
+  await audit(actor.id, "CREATE_INCIDENT", "Incident", incident.id, title);
+  revalidatePath("/app/admin/incidentes");
+  revalidatePath("/app");
+  ok("/app/admin/incidentes");
+}
+
+export async function closeIncident(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = field(formData, "id");
+  await prisma.incident.update({
+    where: { id },
+    data: { status: "CLOSED", closedAt: new Date(), closedById: actor.id },
+  });
+  await audit(actor.id, "CLOSE_INCIDENT", "Incident", id, "Incidente encerrado");
+  revalidatePath("/app/admin/incidentes");
+  revalidatePath("/app");
+  ok("/app/admin/incidentes");
 }

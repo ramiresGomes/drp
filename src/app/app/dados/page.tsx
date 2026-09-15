@@ -11,8 +11,8 @@ import { areaClass, controlClass, Field } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
-import { formatDateTime } from "@/lib/dates";
-import { COMPETENCY_LABELS, LGPD_STATUS_LABELS, LGPD_TYPE_LABELS, ROLE_LABELS, WEEKDAYS } from "@/lib/labels";
+import { formatDateTime, formatDay } from "@/lib/dates";
+import { COMPETENCY_LABELS, LGPD_STATUS_LABELS, LGPD_TYPE_LABELS, ROLE_LABELS, STATE_LABELS, WEEKDAYS } from "@/lib/labels";
 import { requirePerson } from "@/lib/session";
 
 export default async function ProfilePage({
@@ -32,6 +32,22 @@ export default async function ProfilePage({
       availability: true,
       availabilityBlocks: { orderBy: { startAt: "desc" } },
       lgpdRequests: { orderBy: { createdAt: "desc" } },
+      scaleEntries: {
+        where: { occurrence: { date: { lt: new Date() } } },
+        include: { occurrence: { include: { series: { include: { institution: true } } } } },
+        orderBy: { occurrence: { date: "desc" } },
+        take: 8,
+      },
+      participations: {
+        include: { occurrence: { include: { series: { include: { institution: true } } } } },
+        orderBy: { recordedAt: "desc" },
+        take: 8,
+      },
+      eventAttendances: {
+        include: { event: true },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+      },
     },
   });
 
@@ -211,6 +227,52 @@ export default async function ProfilePage({
               </div>
             ))
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 shadow-none">
+        <CardHeader>
+          <CardTitle className="text-base">Meu histórico</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 text-sm">
+          <div>
+            <p className="font-medium">Escalas anteriores</p>
+            {person.scaleEntries.length === 0 ? (
+              <p className="text-muted-foreground">Nenhuma escala passada.</p>
+            ) : (
+              person.scaleEntries.map((entry) => (
+                <p key={entry.id} className="text-muted-foreground">
+                  {entry.occurrence.series.institution.name} · {formatDay(entry.occurrence.date)}
+                </p>
+              ))
+            )}
+          </div>
+          <div>
+            <p className="font-medium">Presenças em atendimento</p>
+            {person.participations.length === 0 ? (
+              <p className="text-muted-foreground">Nenhuma presença lançada.</p>
+            ) : (
+              person.participations.map((item) => (
+                <p key={item.id} className="text-muted-foreground">
+                  {item.occurrence.series.institution.name} · {formatDay(item.occurrence.date)} ·{" "}
+                  {STATE_LABELS[item.state] ?? item.state}
+                  {item.extra ? " · extra" : ""}
+                </p>
+              ))
+            )}
+          </div>
+          <div>
+            <p className="font-medium">Presenças em evento</p>
+            {person.eventAttendances.length === 0 ? (
+              <p className="text-muted-foreground">Nenhum check-in de evento.</p>
+            ) : (
+              person.eventAttendances.map((item) => (
+                <p key={item.id} className="text-muted-foreground">
+                  {item.event.title} · {formatDateTime(item.createdAt)}
+                </p>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

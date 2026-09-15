@@ -6,7 +6,7 @@ Há um cadastro Darpe por pessoa, vínculo institucional para autorizar escala, 
 
 ## Painéis
 
-- **Secretaria** — pessoas, cidades, comuns, instituições, vínculos, séries, eventos, avisos, moderação de arquivos, pedidos LGPD, dupla aprovação, auditoria e relatórios.
+- **Secretaria** — pessoas, cidades, comuns, instituições, vínculos, séries, eventos, avisos, moderação de arquivos, pedidos LGPD, incidentes, dupla aprovação, auditoria e relatórios.
 - **Coordenação** — escala só de vinculados, cancelamento justificado, presença no mesmo dia, participação extra, envio de foto/PDF para moderação.
 - **Colaborador** — agenda, justificativa, avisos (ciência/confirmação), dados próprios, bloqueios de agenda e pedido LGPD.
 - **Encarregado regional** — concede vínculo institucional sem abrir o restante da secretaria.
@@ -53,5 +53,7 @@ Não há senha: o e-mail precisa existir no cadastro Darpe.
 - Check-in de evento é pelo QR, com login e localização quando o local tem geofence.
 - Foto ou PDF do atendimento só fica visível depois da moderação da secretaria.
 - Relatório amplo permanece anonimizado até a secretaria marcar identificação.
+- Exportação em CSV e página para imprimir/salvar PDF.
+- Avisos internos por função, competência, instituição, setor ou cidade; agendamento congela o público no envio.
 - Pedido LGPD do titular: acesso e correção na secretaria; exclusão segue para dupla aprovação.
 - Dupla aprovação: superadmin, exclusão LGPD, reabrir presença após o dia, cancelar reunião/ensaio convocado.
