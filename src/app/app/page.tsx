@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { canUseCoordinatorPanel, isAdmin } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { requirePerson } from "@/lib/session";
+import { getOperationalPendencies } from "@/lib/operations";
 import { formatDay, formatDateTime } from "@/lib/dates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ export default async function AppHomePage() {
   const from = startOfMonth(new Date());
   const to = endOfMonth(addDays(new Date(), 40));
 
-  const [occurrences, events, pendingApprovals, unread] = await Promise.all([
+  const [occurrences, events, pendingApprovals, unread, pendencies] = await Promise.all([
     prisma.occurrence.findMany({
       where: { date: { gte: from, lte: to } },
       include: { series: { include: { institution: true } }, participations: true, scale: true },
@@ -30,6 +31,7 @@ export default async function AppHomePage() {
     prisma.notificationReceipt.count({
       where: { personId: person.id, readAt: null },
     }),
+    isAdmin(person) ? getOperationalPendencies() : Promise.resolve(null),
   ]);
 
   const previstos = occurrences.filter((item) => !item.cancelled && !item.closedAt).length;
@@ -120,6 +122,60 @@ export default async function AppHomePage() {
           </CardContent>
         </Card>
       </section>
+
+      {pendencies ? (
+        <section className="mb-8 grid gap-4 md:grid-cols-3">
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Escalas vazias (10 dias)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {pendencies.emptyScales.length === 0 ? (
+                <p>Nenhuma escala vazia no horizonte de 10 dias.</p>
+              ) : (
+                pendencies.emptyScales.map((item) => (
+                  <p key={item.id}>
+                    {item.series.institution.name} · {formatDay(item.date)}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Recadastramentos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {pendencies.expiringLinks.length === 0 ? (
+                <p>Nenhum vínculo vencendo nos próximos 30 dias.</p>
+              ) : (
+                pendencies.expiringLinks.map((link) => (
+                  <p key={link.id}>
+                    {link.person.name} · {link.institution.name}
+                    {link.endAt ? ` · até ${formatDay(link.endAt)}` : ""}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Checklists atrasados</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {pendencies.delayedChecklists.length === 0 ? (
+                <p>Nenhum item obrigatório pendente nos eventos à frente.</p>
+              ) : (
+                pendencies.delayedChecklists.map((item) => (
+                  <p key={item.event.id}>
+                    {item.event.title} · {item.pending.length} item(ns)
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
     </div>
   );
 }

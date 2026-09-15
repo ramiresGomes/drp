@@ -1,4 +1,4 @@
-import { checkInEvent, submitJustification } from "@/app/actions/member";
+import { submitJustification } from "@/app/actions/member";
 import { EmptyState, Flash } from "@/components/flash";
 import { areaClass } from "@/components/field";
 import { Button } from "@/components/ui/button";
@@ -99,12 +99,10 @@ export default async function AgendaPage({
                 {event.attendances.length > 0 ? (
                   <p className="mt-2 text-sm text-primary">Presença registrada.</p>
                 ) : (
-                  <form action={checkInEvent} className="mt-3">
-                    <input type="hidden" name="token" value={event.checkinToken} />
-                    <Button type="submit" variant="outline">
-                      Confirmar presença neste evento
-                    </Button>
-                  </form>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    A presença deste evento é pelo QR no local, com login válido
+                    {event.latitude != null && event.longitude != null ? " e localização compatível" : ""}.
+                  </p>
                 )}
               </div>
             ))}

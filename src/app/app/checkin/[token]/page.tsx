@@ -1,15 +1,26 @@
-import { checkInEvent } from "@/app/actions/member";
+import { CheckinForm } from "@/components/checkin-form";
+import { Flash } from "@/components/flash";
 import { prisma } from "@/lib/db";
 import { formatDateTime } from "@/lib/dates";
 import { requirePerson } from "@/lib/session";
-import { Button } from "@/components/ui/button";
 import { notFound } from "next/navigation";
 
-export default async function CheckinPage({ params }: { params: Promise<{ token: string }> }) {
-  await requirePerson();
+export default async function CheckinPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ erro?: string; ok?: string }>;
+}) {
+  const person = await requirePerson();
   const { token } = await params;
-  const event = await prisma.regionalEvent.findUnique({ where: { checkinToken: token } });
+  const flash = await searchParams;
+  const event = await prisma.regionalEvent.findUnique({
+    where: { checkinToken: token },
+    include: { attendances: { where: { personId: person.id } } },
+  });
   if (!event) notFound();
+  const already = event.attendances.length > 0;
 
   return (
     <div className="mx-auto max-w-lg">
@@ -18,13 +29,13 @@ export default async function CheckinPage({ params }: { params: Promise<{ token:
       <p className="mt-2 text-muted-foreground">
         {formatDateTime(event.startsAt)} · {event.location}
       </p>
+      <Flash erro={flash.erro} ok={flash.ok} />
       {event.cancelled ? (
         <p className="mt-6 text-destructive">Este evento foi cancelado.</p>
+      ) : already ? (
+        <p className="mt-6 text-sm text-primary">Sua presença neste evento já está registrada.</p>
       ) : (
-        <form action={checkInEvent} className="mt-6">
-          <input type="hidden" name="token" value={token} />
-          <Button type="submit">Registrar minha presença</Button>
-        </form>
+        <CheckinForm token={token} hasGeofence={event.latitude != null && event.longitude != null} />
       )}
     </div>
   );

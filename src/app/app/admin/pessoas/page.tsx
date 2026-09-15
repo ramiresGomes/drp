@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import { COMPETENCY_LABELS, ROLE_LABELS, STATUS_LABELS } from "@/lib/labels";
 import { requireAdmin } from "@/lib/session";
 import { formatDay } from "@/lib/dates";
+import Link from "next/link";
 
 export default async function PeoplePage({
   searchParams,
@@ -105,7 +106,9 @@ export default async function PeoplePage({
             {people.map((person) => (
               <TableRow key={person.id}>
                 <TableCell>
-                  <p className="font-medium">{person.name}</p>
+                  <Link href={`/app/admin/pessoas/${person.id}`} className="font-medium hover:underline">
+                    {person.name}
+                  </Link>
                   <p className="text-xs text-muted-foreground">{person.email}</p>
                 </TableCell>
                 <TableCell>

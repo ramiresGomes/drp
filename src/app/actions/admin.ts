@@ -4,8 +4,11 @@ import { randomBytes } from "crypto";
 import { addHours } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/audit";
+import { parseChecklist } from "@/lib/checklist";
 import { prisma } from "@/lib/db";
-import { checked, fail, field } from "@/lib/forms";
+import { checked, fail, field, ok, optionalDate } from "@/lib/forms";
+import { parseCoordinate } from "@/lib/geo";
+import { STATUS_LABELS } from "@/lib/labels";
 import { musicianSingerConflict } from "@/lib/permissions";
 import { ensureOccurrences } from "@/lib/occurrences";
 import { requireAdmin } from "@/lib/session";
@@ -67,6 +70,26 @@ export async function createInstitution(formData: FormData) {
   });
   await audit(actor.id, "CREATE_INSTITUTION", "Institution", institution.id, name);
   revalidatePath("/app/admin/instituicoes");
+  ok("/app/admin/instituicoes");
+}
+
+export async function setInstitutionActive(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = field(formData, "id");
+  const active = field(formData, "active") === "true";
+  await prisma.institution.update({
+    where: { id },
+    data: { active },
+  });
+  await audit(
+    actor.id,
+    active ? "ACTIVATE_INSTITUTION" : "DEACTIVATE_INSTITUTION",
+    "Institution",
+    id,
+    active ? "Instituição reativada" : "Instituição inativada sem apagar histórico",
+  );
+  revalidatePath("/app/admin/instituicoes");
+  ok("/app/admin/instituicoes");
 }
 
 export async function createPerson(formData: FormData) {
@@ -104,14 +127,93 @@ export async function createPerson(formData: FormData) {
   });
   await audit(actor.id, "CREATE_PERSON", "Person", person.id, `Cadastro Darpe de ${name}`);
   revalidatePath("/app/admin/pessoas");
+  ok("/app/admin/pessoas");
+}
+
+export async function updatePerson(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = field(formData, "id");
+  const name = field(formData, "name");
+  const email = field(formData, "email").toLowerCase();
+  const phone = field(formData, "phone");
+  const congregationId = field(formData, "congregationId");
+  const birthDate = field(formData, "birthDate");
+  const notes = field(formData, "notes") || null;
+  const status = field(formData, "status") || "ACTIVE";
+  const roles = formData.getAll("roles").map(String);
+  const competencies = formData.getAll("competencies").map(String);
+  const isMinor = checked(formData, "isMinor");
+  const path = `/app/admin/pessoas/${id}`;
+
+  if (!id || !name || !email || !phone || !congregationId || !birthDate) {
+    fail(path, "Nome, e-mail, telefone, comum e nascimento são obrigatórios.");
+  }
+  if (!(status in STATUS_LABELS) || status === "ERASED") {
+    fail(path, "Situação inválida. Exclusão definitiva só pelo fluxo LGPD.");
+  }
+  if (musicianSingerConflict(competencies)) {
+    fail(path, "A pessoa não pode ser músico e cantor ao mesmo tempo.");
+  }
+
+  const current = await prisma.person.findUnique({ where: { id } });
+  if (!current || current.status === "ERASED") {
+    fail("/app/admin/pessoas", "Pessoa não encontrada.");
+  }
+
+  await prisma.$transaction([
+    prisma.person.update({
+      where: { id },
+      data: {
+        name,
+        email,
+        phone,
+        congregationId,
+        birthDate: new Date(`${birthDate}T12:00:00`),
+        notes,
+        status,
+        isMinor,
+        consentAt: isMinor ? current.consentAt ?? new Date() : current.consentAt,
+      },
+    }),
+    prisma.personRole.deleteMany({ where: { personId: id } }),
+    ...(roles.length
+      ? [prisma.personRole.createMany({ data: roles.map((role) => ({ personId: id, role })) })]
+      : []),
+    prisma.personCompetency.deleteMany({ where: { personId: id } }),
+    ...(competencies.length
+      ? [
+          prisma.personCompetency.createMany({
+            data: competencies.map((competency) => ({ personId: id, competency })),
+          }),
+        ]
+      : []),
+  ]);
+  await audit(actor.id, "UPDATE_PERSON", "Person", id, `Cadastro atualizado · ${STATUS_LABELS[status]}`);
+  revalidatePath("/app/admin/pessoas");
+  revalidatePath(path);
+  ok(path);
 }
 
 export async function createInstitutionLink(formData: FormData) {
   const actor = await requireAdmin();
   const personId = field(formData, "personId");
   const institutionId = field(formData, "institutionId");
+  const justification = field(formData, "justification") || null;
+  const startAt = optionalDate(formData, "startAt") ?? new Date();
+  const endAt = optionalDate(formData, "endAt");
   if (!personId || !institutionId) {
     fail("/app/admin/vinculos", "Pessoa e instituição são obrigatórias.");
+  }
+  if (endAt && endAt <= startAt) {
+    fail("/app/admin/vinculos", "A vigência final precisa ser posterior ao início.");
+  }
+
+  const institution = await prisma.institution.findUnique({ where: { id: institutionId } });
+  if (!institution || !institution.active) {
+    fail("/app/admin/vinculos", "Não é possível vincular a uma instituição inativa.");
+  }
+  if (institution.requiresRecadastramento && !endAt) {
+    fail("/app/admin/vinculos", "Esta instituição exige data final de recadastramento.");
   }
 
   const existing = await prisma.institutionLink.findUnique({
@@ -120,15 +222,16 @@ export async function createInstitutionLink(formData: FormData) {
   if (existing) {
     await prisma.institutionLink.update({
       where: { id: existing.id },
-      data: { endAt: null, justification: null },
+      data: { endAt, startAt, justification, createdById: actor.id },
     });
   } else {
     await prisma.institutionLink.create({
-      data: { personId, institutionId, createdById: actor.id },
+      data: { personId, institutionId, createdById: actor.id, startAt, endAt, justification },
     });
   }
   await audit(actor.id, "CREATE_LINK", "InstitutionLink", institutionId, "Vínculo institucional concedido");
   revalidatePath("/app/admin/vinculos");
+  ok("/app/admin/vinculos");
 }
 
 export async function revokeInstitutionLink(formData: FormData) {
@@ -141,6 +244,7 @@ export async function revokeInstitutionLink(formData: FormData) {
   });
   await audit(actor.id, "REVOKE_LINK", "InstitutionLink", id, justification);
   revalidatePath("/app/admin/vinculos");
+  ok("/app/admin/vinculos");
 }
 
 export async function setInstitutionResponsible(formData: FormData) {
@@ -167,6 +271,8 @@ export async function createSeries(formData: FormData) {
   const justifyDaysBefore = Number(field(formData, "justifyDaysBefore") || "2");
   const startDateRaw = field(formData, "startDate");
   if (!institutionId) fail("/app/admin/series", "Escolha a instituição.");
+  const institution = await prisma.institution.findUnique({ where: { id: institutionId } });
+  if (!institution || !institution.active) fail("/app/admin/series", "Não é possível criar série para instituição inativa.");
 
   const startDate = startDateRaw ? new Date(`${startDateRaw}T09:00:00`) : nextWeekday(weekday);
   const weekdayLabel = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"][weekday] ?? "dia";
@@ -182,6 +288,7 @@ export async function createSeries(formData: FormData) {
   await ensureOccurrences(series.id);
   await audit(actor.id, "CREATE_SERIES", "RecurringSeries", series.id, series.label);
   revalidatePath("/app/admin/series");
+  ok("/app/admin/series");
 }
 
 export async function createEventType(formData: FormData) {
@@ -218,6 +325,12 @@ export async function createRegionalEvent(formData: FormData) {
   const type = await prisma.eventType.findUnique({ where: { id: typeId } });
   if (!type) fail("/app/admin/eventos", "Tipo de evento não encontrado.");
   const start = new Date(startsAt);
+  const latitude = parseCoordinate(field(formData, "latitude"));
+  const longitude = parseCoordinate(field(formData, "longitude"));
+  const radiusRaw = field(formData, "radiusMeters");
+  if ((latitude == null) !== (longitude == null)) {
+    fail("/app/admin/eventos", "Informe latitude e longitude juntas, ou deixe as duas em branco.");
+  }
   const event = await prisma.regionalEvent.create({
     data: {
       title,
@@ -225,6 +338,9 @@ export async function createRegionalEvent(formData: FormData) {
       startsAt: start,
       endsAt: addHours(start, 2),
       location,
+      latitude,
+      longitude,
+      radiusMeters: radiusRaw ? Number(radiusRaw) : 250,
       mandatory: checked(formData, "mandatory") || type.mandatory,
       checkinToken: randomBytes(12).toString("hex"),
       createdById: actor.id,
@@ -233,6 +349,24 @@ export async function createRegionalEvent(formData: FormData) {
     },
   });
   await audit(actor.id, "CREATE_EVENT", "RegionalEvent", event.id, title);
+  revalidatePath("/app/admin/eventos");
+  ok("/app/admin/eventos");
+}
+
+export async function toggleChecklistItem(formData: FormData) {
+  const actor = await requireAdmin();
+  const eventId = field(formData, "eventId");
+  const itemId = field(formData, "itemId");
+  const event = await prisma.regionalEvent.findUnique({ where: { id: eventId } });
+  if (!event) fail("/app/admin/eventos", "Evento não encontrado.");
+  const items = parseChecklist(event.checklistJson).map((item) =>
+    item.id === itemId ? { ...item, done: !item.done } : item,
+  );
+  await prisma.regionalEvent.update({
+    where: { id: eventId },
+    data: { checklistJson: JSON.stringify(items) },
+  });
+  await audit(actor.id, "EVENT_CHECKLIST", "RegionalEvent", eventId, `Checklist ${itemId}`);
   revalidatePath("/app/admin/eventos");
 }
 

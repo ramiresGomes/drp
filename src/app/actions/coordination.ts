@@ -1,8 +1,9 @@
 "use server";
 
+import { addDays } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/audit";
-import { isToday } from "@/lib/dates";
+import { isToday, toDay } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { fail, field } from "@/lib/forms";
 import { canScale } from "@/lib/permissions";
@@ -25,6 +26,20 @@ export async function addScaleEntry(formData: FormData) {
   });
   if (!occurrence) fail("/app/coordenacao", "Atendimento não encontrado.");
   const actor = await requireInstitutionAccess(occurrence.series.institutionId);
+  const path = `/app/coordenacao/${occurrence.series.institutionId}`;
+
+  const person = await prisma.person.findUnique({
+    where: { id: personId },
+    include: { availability: true },
+  });
+  if (!person || person.status !== "ACTIVE") {
+    fail(path, "Só entra na escala quem está com cadastro ativo.");
+  }
+
+  const institution = await prisma.institution.findUnique({ where: { id: occurrence.series.institutionId } });
+  if (!institution?.active) {
+    fail(path, "Esta instituição está inativa.");
+  }
 
   const link = await prisma.institutionLink.findUnique({
     where: {
@@ -34,8 +49,35 @@ export async function addScaleEntry(formData: FormData) {
       },
     },
   });
-  if (!link || (link.endAt && link.endAt <= new Date())) {
-    fail(`/app/coordenacao/${occurrence.series.institutionId}`, "Só entra na escala quem tem vínculo ativo.");
+  if (!link || (link.endAt && link.endAt <= new Date()) || link.startAt > new Date()) {
+    fail(path, "Só entra na escala quem tem vínculo ativo.");
+  }
+
+  const weekday = occurrence.date.getDay();
+  const availability = person.availability.find((item) => item.weekday === weekday);
+  if (availability && !availability.available) {
+    fail(path, "Esta pessoa marcou indisponibilidade neste dia da semana.");
+  }
+
+  const currentCount = await prisma.scaleEntry.count({ where: { occurrenceId } });
+  if (institution.capacity && currentCount >= institution.capacity) {
+    fail(path, `Capacidade máxima de ${institution.capacity} pessoas neste atendimento.`);
+  }
+
+  const dayStart = toDay(occurrence.date);
+  const conflict = await prisma.scaleEntry.findFirst({
+    where: {
+      personId,
+      occurrenceId: { not: occurrenceId },
+      occurrence: {
+        cancelled: false,
+        date: { gte: dayStart, lt: addDays(dayStart, 1) },
+      },
+    },
+    include: { occurrence: { include: { series: { include: { institution: true } } } } },
+  });
+  if (conflict) {
+    fail(path, `Conflito de horário: já escalado em ${conflict.occurrence.series.institution.name} neste dia.`);
   }
 
   await prisma.scaleEntry.upsert({
@@ -82,30 +124,36 @@ export async function markParticipation(formData: FormData) {
   const occurrenceId = field(formData, "occurrenceId");
   const personId = field(formData, "personId");
   const extra = field(formData, "extra") === "on" || field(formData, "extra") === "true";
+  const state = field(formData, "state") || "PRESENTE";
   const occurrence = await prisma.occurrence.findUnique({
     where: { id: occurrenceId },
     include: { series: true },
   });
   if (!occurrence) fail("/app/coordenacao", "Atendimento não encontrado.");
   const actor = await requireInstitutionAccess(occurrence.series.institutionId);
+  const path = `/app/coordenacao/${occurrence.series.institutionId}`;
   if (!isToday(occurrence.date)) {
-    fail(`/app/coordenacao/${occurrence.series.institutionId}`, "Presença só pode ser lançada no mesmo dia do atendimento.");
+    fail(path, "Presença só pode ser lançada no mesmo dia do atendimento.");
   }
   if (occurrence.closedAt) {
-    fail(`/app/coordenacao/${occurrence.series.institutionId}`, "A lista deste atendimento já foi fechada.");
+    fail(path, "A lista deste atendimento já foi fechada.");
+  }
+  if (state !== "PRESENTE" && state !== "AUSENTE") {
+    fail(path, "Situação de presença inválida.");
   }
 
   await prisma.participation.upsert({
     where: { occurrenceId_personId: { occurrenceId, personId } },
-    update: { state: extra ? "PRESENTE" : "PRESENTE", extra, recordedAt: new Date() },
+    update: { state, extra: extra && state === "PRESENTE", recordedAt: new Date() },
     create: {
       occurrenceId,
       personId,
-      state: "PRESENTE",
-      extra,
+      state,
+      extra: extra && state === "PRESENTE",
     },
   });
-  revalidatePath(`/app/coordenacao/${occurrence.series.institutionId}`);
+  await audit(actor.id, "MARK_ATTENDANCE", "Occurrence", occurrenceId, state);
+  revalidatePath(path);
 }
 
 export async function closeOccurrence(formData: FormData) {

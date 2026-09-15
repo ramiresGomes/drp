@@ -22,7 +22,7 @@ export default async function LinksPage({
       orderBy: { createdAt: "desc" },
     }),
     prisma.person.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
-    prisma.institution.findMany({ orderBy: { name: "asc" } }),
+    prisma.institution.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -30,7 +30,7 @@ export default async function LinksPage({
       <AdminNav current="/app/admin/vinculos" />
       <h1 className="mb-2 font-heading text-3xl">Vínculos institucionais</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Sem vínculo ativo a pessoa não entra na escala. Não há aceite digital nem visitante sem cadastro completo.
+        Sem vínculo ativo a pessoa não entra na escala. Instituição com recadastramento exige data final de vigência.
       </p>
       <Flash erro={params.erro} ok={params.ok} />
 
@@ -39,7 +39,7 @@ export default async function LinksPage({
           <CardTitle className="text-base">Conceder vínculo</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createInstitutionLink} className="grid gap-3 md:grid-cols-3">
+          <form action={createInstitutionLink} className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <Field label="Pessoa">
               <select className={controlClass} name="personId" required>
                 {people.map((person) => (
@@ -54,9 +54,19 @@ export default async function LinksPage({
                 {institutions.map((institution) => (
                   <option key={institution.id} value={institution.id}>
                     {institution.name}
+                    {institution.requiresRecadastramento ? " · recadastramento" : ""}
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label="Início da vigência">
+              <input className={controlClass} type="date" name="startAt" />
+            </Field>
+            <Field label="Fim do recadastramento">
+              <input className={controlClass} type="date" name="endAt" />
+            </Field>
+            <Field label="Justificativa (opcional)">
+              <input className={controlClass} name="justification" />
             </Field>
             <div className="flex items-end">
               <Button type="submit">Conceder</Button>
@@ -77,7 +87,8 @@ export default async function LinksPage({
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {isLinkActive(link) ? "Ativo" : "Encerrado"}
-                  {link.endAt ? ` em ${formatDay(link.endAt)}` : ""}
+                  {` · início ${formatDay(link.startAt)}`}
+                  {link.endAt ? ` · vigência até ${formatDay(link.endAt)}` : ""}
                   {link.justification ? ` · ${link.justification}` : ""}
                 </p>
               </div>

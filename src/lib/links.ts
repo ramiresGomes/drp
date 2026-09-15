@@ -1,3 +1,5 @@
-export function isLinkActive(link: { endAt: Date | null }) {
-  return !link.endAt || link.endAt > new Date();
+export function isLinkActive(link: { startAt?: Date; endAt: Date | null }) {
+  const now = new Date();
+  if (link.startAt && link.startAt > now) return false;
+  return !link.endAt || link.endAt > now;
 }

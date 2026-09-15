@@ -42,9 +42,12 @@ Não há senha: o e-mail precisa existir no cadastro Darpe.
 ## Regras da v1 já no sistema
 
 - Instituição tem uma cidade e um setor.
+- Instituição pode ser inativada sem perder histórico.
 - Músico e cantor não se combinam.
 - Sem vínculo ativo não há escala.
+- Vínculo de recadastramento exige vigência.
 - Sem remarcação; cancelamento exige justificativa.
-- Presença e fechamento da lista no mesmo dia.
+- Presença e fechamento da lista no mesmo dia; correção no mesmo dia sem segunda aprovação.
 - Evento obrigatório vale para toda a regional.
+- Check-in de evento é pelo QR, com login e localização quando o local tem geofence.
 - Dupla aprovação: superadmin, exclusão LGPD, reabrir presença após o dia, cancelar reunião/ensaio convocado.

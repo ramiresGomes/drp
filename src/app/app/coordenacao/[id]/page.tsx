@@ -11,8 +11,10 @@ import { EmptyState, Flash } from "@/components/flash";
 import { areaClass, controlClass } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
+import { addDays } from "date-fns";
 import { isToday, formatDayLong } from "@/lib/dates";
 import { isLinkActive } from "@/lib/links";
+import { STATE_LABELS } from "@/lib/labels";
 import { canScale } from "@/lib/permissions";
 import { requireCoordinator } from "@/lib/session";
 
@@ -27,6 +29,7 @@ export default async function InstitutionCoordinationPage({
   const { id } = await params;
   const flash = await searchParams;
   if (!canScale(person, id)) notFound();
+  const since = addDays(new Date(), -1);
 
   const institution = await prisma.institution.findUnique({
     where: { id },
@@ -37,7 +40,7 @@ export default async function InstitutionCoordinationPage({
       series: {
         include: {
           occurrences: {
-            where: { date: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24) } },
+            where: { date: { gte: since } },
             orderBy: { date: "asc" },
             include: {
               scale: { include: { person: true } },
@@ -50,7 +53,7 @@ export default async function InstitutionCoordinationPage({
     },
   });
   if (!institution) notFound();
-  const linked = institution.links.filter(isLinkActive);
+  const linked = institution.links.filter((link) => isLinkActive(link) && link.person.status === "ACTIVE");
 
   return (
     <div>
@@ -59,6 +62,7 @@ export default async function InstitutionCoordinationPage({
       <p className="mb-6 text-sm text-muted-foreground">
         {institution.city.name} · setor {institution.sector.code}
         {institution.capacity ? ` · até ${institution.capacity} pessoas` : ""}
+        {institution.active ? "" : " · instituição inativa"}
       </p>
       <Flash erro={flash.erro} ok={flash.ok} />
 
@@ -99,19 +103,32 @@ export default async function InstitutionCoordinationPage({
                                 <div>
                                   <p className="font-medium">{entry.person.name}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    {participation ? participation.state : "Ainda sem presença"}
+                                    {participation
+                                      ? `${STATE_LABELS[participation.state] ?? participation.state}${participation.extra ? " · extra" : ""}`
+                                      : "Ainda sem presença"}
                                     {justification ? ` · justificativa: ${justification.reason}` : ""}
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                   {today && !occurrence.closedAt ? (
-                                    <form action={markParticipation}>
-                                      <input type="hidden" name="occurrenceId" value={occurrence.id} />
-                                      <input type="hidden" name="personId" value={entry.personId} />
-                                      <Button type="submit" size="sm">
-                                        Presente
-                                      </Button>
-                                    </form>
+                                    <>
+                                      <form action={markParticipation}>
+                                        <input type="hidden" name="occurrenceId" value={occurrence.id} />
+                                        <input type="hidden" name="personId" value={entry.personId} />
+                                        <input type="hidden" name="state" value="PRESENTE" />
+                                        <Button type="submit" size="sm">
+                                          Presente
+                                        </Button>
+                                      </form>
+                                      <form action={markParticipation}>
+                                        <input type="hidden" name="occurrenceId" value={occurrence.id} />
+                                        <input type="hidden" name="personId" value={entry.personId} />
+                                        <input type="hidden" name="state" value="AUSENTE" />
+                                        <Button type="submit" size="sm" variant="outline">
+                                          Ausente
+                                        </Button>
+                                      </form>
+                                    </>
                                   ) : null}
                                   {!occurrence.closedAt ? (
                                     <form action={removeScaleEntry}>
@@ -175,7 +192,7 @@ export default async function InstitutionCoordinationPage({
                           className={areaClass}
                           name="notes"
                           defaultValue={occurrence.notes ?? ""}
-                          placeholder="Observação do atendimento (foto e texto passam por moderação da secretaria na v1 seguinte)."
+                          placeholder="Observação do atendimento."
                         />
                         <Button type="submit" variant="outline">
                           Salvar observação

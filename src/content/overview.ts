@@ -41,15 +41,17 @@ export const closedScope = {
 
 export const nextSteps = [
   {
-    title: "Implementar a v1",
-    detail: "A definição de negócio está fechada. O próximo passo é o sistema operacional, começando pelos cadastros, vínculos e escalas.",
+    title: "Operação cotidiana da v1",
+    detail:
+      "Cadastros, vínculos com vigência, escalas com capacidade e conflito, presença no mesmo dia e check-in de evento pelo QR já estão no sistema.",
   },
   {
-    title: "Google OAuth nos três painéis",
-    detail: "Mesmo provedor para admin, coordenação e colaborador, inclusive menores. O painel muda pela permissão.",
+    title: "Google OAuth em produção",
+    detail: "O mesmo provedor vale para os três painéis. Nesta prévia, o e-mail de demonstração continua disponível.",
   },
   {
-    title: "Governança no código",
-    detail: "Auditoria em tudo e dupla aprovação só nas quatro ações críticas.",
+    title: "Evoluções da v1",
+    detail:
+      "Foto com moderação, construtor de relatório com modelos salvos e PWA de coordenação ficam para o próximo ciclo.",
   },
 ];

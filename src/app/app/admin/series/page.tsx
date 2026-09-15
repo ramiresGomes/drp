@@ -21,7 +21,7 @@ export default async function SeriesPage({
       include: { institution: true, occurrences: { orderBy: { date: "asc" }, take: 3, where: { date: { gte: new Date() }, cancelled: false } } },
       orderBy: { startDate: "asc" },
     }),
-    prisma.institution.findMany({ orderBy: { name: "asc" } }),
+    prisma.institution.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
   return (

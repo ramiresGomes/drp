@@ -8,6 +8,7 @@ import { formatDay } from "@/lib/dates";
 export default async function CoordinationIndexPage() {
   const person = await requireCoordinator();
   const institutions = await prisma.institution.findMany({
+    where: { active: true },
     include: {
       city: true,
       sector: true,

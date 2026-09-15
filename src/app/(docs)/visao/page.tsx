@@ -13,7 +13,7 @@ export default function OverviewPage() {
       <PageHeader
         kicker="Projeto DRP"
         badge="Definição fechada"
-        title="O Darpe de Uberlândia volta a ter um documento vivo."
+        title="O Darpe de Uberlândia já tem definição, PRD e sistema operacional."
         description={recoveryNotes.summary}
       />
 

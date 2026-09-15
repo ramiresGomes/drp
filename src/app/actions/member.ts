@@ -3,7 +3,8 @@
 import { addDays } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { fail, field } from "@/lib/forms";
+import { fail, field, ok } from "@/lib/forms";
+import { distanceMeters, parseCoordinate } from "@/lib/geo";
 import { requirePerson } from "@/lib/session";
 import { toDay } from "@/lib/dates";
 
@@ -107,12 +108,30 @@ export async function updateOwnProfile(formData: FormData) {
 export async function checkInEvent(formData: FormData) {
   const person = await requirePerson();
   const token = field(formData, "token");
+  const latitude = parseCoordinate(field(formData, "latitude"));
+  const longitude = parseCoordinate(field(formData, "longitude"));
   const event = await prisma.regionalEvent.findUnique({ where: { checkinToken: token } });
   if (!event || event.cancelled) fail("/app/agenda", "Evento não encontrado ou cancelado.");
+
+  if (event.latitude != null && event.longitude != null) {
+    if (latitude == null || longitude == null) {
+      fail(`/app/checkin/${token}`, "O check-in deste evento exige localização no aparelho.");
+    }
+    const meters = distanceMeters(event.latitude, event.longitude, latitude, longitude);
+    if (meters > event.radiusMeters) {
+      fail(
+        `/app/checkin/${token}`,
+        `Localização incompatível (${Math.round(meters)} m do local). O QR só registra presença no recinto.`,
+      );
+    }
+  }
+
   await prisma.eventAttendance.upsert({
     where: { eventId_personId: { eventId: event.id, personId: person.id } },
-    update: { present: true },
-    create: { eventId: event.id, personId: person.id, present: true },
+    update: { present: true, latitude, longitude },
+    create: { eventId: event.id, personId: person.id, present: true, latitude, longitude },
   });
   revalidatePath("/app/agenda");
+  revalidatePath(`/app/checkin/${token}`);
+  ok("/app/agenda");
 }

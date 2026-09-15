@@ -211,6 +211,9 @@ model RegionalEvent {
   startsAt      DateTime
   endsAt        DateTime
   location      String
+  latitude      Float?
+  longitude     Float?
+  radiusMeters  Int       @default(250)
   mandatory     Boolean
   checkinToken  String    @unique
   createdById   String
@@ -231,6 +234,8 @@ model EventAttendance {
   personId  String
   present   Boolean       @default(true)
   manual    Boolean       @default(false)
+  latitude  Float?
+  longitude Float?
   createdAt DateTime      @default(now())
   @@unique([eventId, personId])
 }
