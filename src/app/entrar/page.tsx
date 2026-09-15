@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { demoSignIn, googleSignIn } from "@/app/actions/auth";
+import { demoSignIn, googleSignIn, logout } from "@/app/actions/auth";
 import { Flash } from "@/components/flash";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { controlClass, Field } from "@/components/field";
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 
 const DEMO = [
   { email: "secretaria@darpe.local", name: "Ramires Gomes", role: "Secretaria / superadmin" },
@@ -23,7 +22,6 @@ export default async function LoginPage({
   searchParams: Promise<{ erro?: string; error?: string }>;
 }) {
   const session = await auth();
-  if (session?.user?.email) redirect("/app");
   const params = await searchParams;
   const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
   const erro =
@@ -52,6 +50,25 @@ export default async function LoginPage({
           </CardHeader>
           <CardContent>
             <Flash erro={erro} />
+            {session?.user?.email ? (
+              <div className="mb-6 rounded-lg border border-border bg-muted/40 px-3 py-3 text-sm">
+                <p>
+                  Sessão atual: <span className="font-medium">{session.user.name ?? session.user.email}</span>
+                </p>
+                <p className="text-muted-foreground">{session.user.email}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button render={<Link href="/app" />}>Continuar no sistema</Button>
+                  <form action={logout}>
+                    <Button type="submit" variant="outline">
+                      Encerrar sessão
+                    </Button>
+                  </form>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Para abrir outro painel de demonstração, encerre a sessão ou escolha outra conta abaixo.
+                </p>
+              </div>
+            ) : null}
             {googleEnabled ? (
               <form action={googleSignIn} className="mb-6">
                 <Button className="w-full" type="submit">

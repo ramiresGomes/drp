@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -82,6 +82,23 @@ function NavLinks({
   );
 }
 
+function LogoutButton({
+  className,
+  variant = "outline",
+}: {
+  className?: string;
+  variant?: "outline" | "ghost";
+}) {
+  return (
+    <form action={logout}>
+      <Button type="submit" variant={variant} className={className}>
+        <LogOut data-icon="inline-start" />
+        Sair
+      </Button>
+    </form>
+  );
+}
+
 export function ProductShell({
   person,
   children,
@@ -99,38 +116,41 @@ export function ProductShell({
           <p className="mt-1 font-heading text-2xl text-sidebar-foreground">DRP</p>
           <p className="mt-1 text-sm text-sidebar-foreground/70">{person.name}</p>
         </div>
-        <ScrollArea className="flex-1">
+        <ScrollArea className="min-h-0 flex-1">
           <NavLinks person={person} />
         </ScrollArea>
-        <form action={logout} className="border-t border-sidebar-border p-3">
-          <Button variant="ghost" className="w-full justify-start text-sidebar-foreground" type="submit">
-            Sair
-          </Button>
-        </form>
+        <div className="border-t border-sidebar-border p-3">
+          <LogoutButton className="w-full border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground" />
+        </div>
       </aside>
 
       <div className="md:pl-72">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:hidden">
-          <div>
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:px-8">
+          <div className="md:hidden">
             <p className="text-xs tracking-[0.18em] text-primary uppercase">DRP</p>
             <p className="text-sm text-muted-foreground">{person.name}</p>
           </div>
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger render={<Button variant="outline" size="icon" aria-label="Abrir navegação" />}>
-              <Menu className="size-4" />
-            </SheetTrigger>
-            <SheetContent side="left" className="bg-sidebar p-0 text-sidebar-foreground">
-              <SheetHeader className="border-b border-sidebar-border">
-                <SheetTitle className="text-sidebar-foreground">Menu DRP</SheetTitle>
-              </SheetHeader>
-              <NavLinks person={person} onNavigate={() => setOpen(false)} />
-              <form action={logout} className="p-3">
-                <Button variant="ghost" className="w-full justify-start text-sidebar-foreground" type="submit">
-                  Sair
-                </Button>
-              </form>
-            </SheetContent>
-          </Sheet>
+          <p className="hidden text-sm text-muted-foreground md:block">
+            {person.email} · sessão nesta regional
+          </p>
+          <div className="flex items-center gap-2">
+            <LogoutButton className="hidden md:inline-flex" />
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger render={<Button variant="outline" size="icon" className="md:hidden" aria-label="Abrir navegação" />}>
+                <Menu className="size-4" />
+              </SheetTrigger>
+              <SheetContent side="left" className="bg-sidebar p-0 text-sidebar-foreground">
+                <SheetHeader className="border-b border-sidebar-border">
+                  <SheetTitle className="text-sidebar-foreground">Menu DRP</SheetTitle>
+                </SheetHeader>
+                <NavLinks person={person} onNavigate={() => setOpen(false)} />
+                <div className="p-3">
+                  <LogoutButton className="w-full border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground" />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <LogoutButton className="md:hidden" />
+          </div>
         </header>
         <main className="mx-auto w-full max-w-6xl px-4 py-8 pb-20 sm:px-8">{children}</main>
       </div>
