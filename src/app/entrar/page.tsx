@@ -4,6 +4,7 @@ import { Flash } from "@/components/flash";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { controlClass, Field } from "@/components/field";
+import { demoLoginEnabled, googleOAuthEnabled } from "@/lib/auth-mode";
 import { auth } from "@/auth";
 
 const DEMO = [
@@ -23,7 +24,8 @@ export default async function LoginPage({
 }) {
   const session = await auth();
   const params = await searchParams;
-  const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+  const googleEnabled = googleOAuthEnabled();
+  const demoEnabled = demoLoginEnabled();
   const erro =
     params.erro ||
     (params.error === "nao-cadastrado"
@@ -39,8 +41,10 @@ export default async function LoginPage({
           <p className="text-xs tracking-[0.22em] text-primary uppercase">Regional Uberlândia-MG</p>
           <h1 className="mt-3 font-heading text-4xl sm:text-5xl">Entrar no DRP</h1>
           <p className="mt-4 max-w-xl text-muted-foreground">
-            O acesso é pelo e-mail Google cadastrado no Darpe. Nesta prévia local, use um dos e-mails de
-            demonstração para abrir os painéis de secretaria, coordenação e colaborador.
+            O acesso é pelo e-mail Google cadastrado no Darpe.
+            {demoEnabled
+              ? " Nesta prévia local, use um dos e-mails de demonstração para abrir os painéis."
+              : " Só entra quem já tem cadastro ativo na secretaria."}
           </p>
         </div>
 
@@ -65,7 +69,9 @@ export default async function LoginPage({
                   </form>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Para abrir outro painel de demonstração, encerre a sessão ou escolha outra conta abaixo.
+                  {demoEnabled
+                    ? "Para abrir outro painel de demonstração, encerre a sessão ou escolha outra conta abaixo."
+                    : "Encerre a sessão para entrar com outro e-mail Google."}
                 </p>
               </div>
             ) : null}
@@ -77,33 +83,42 @@ export default async function LoginPage({
               </form>
             ) : (
               <p className="mb-6 text-sm text-muted-foreground">
-                Google OAuth ainda não está configurado neste ambiente. Use um e-mail de demonstração.
+                Google OAuth ainda não está configurado neste ambiente.
+                {demoEnabled ? " Use um e-mail de demonstração." : ""}
               </p>
             )}
-            <form action={demoSignIn} className="grid gap-3">
-              <Field label="E-mail cadastrado">
-                <input className={controlClass} type="email" name="email" required placeholder="secretaria@darpe.local" />
-              </Field>
-              <Button type="submit">Entrar com e-mail de demonstração</Button>
-            </form>
-            <div className="mt-6 space-y-2">
-              <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">Contas de prévia</p>
-              {DEMO.map((item) => (
-                <form action={demoSignIn} key={item.email}>
-                  <input type="hidden" name="email" value={item.email} />
-                  <button
-                    type="submit"
-                    className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-muted"
-                  >
-                    <span>
-                      <span className="block font-medium">{item.name}</span>
-                      <span className="text-xs text-muted-foreground">{item.role}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">{item.email}</span>
-                  </button>
+            {demoEnabled ? (
+              <>
+                <form action={demoSignIn} className="grid gap-3">
+                  <Field label="E-mail cadastrado">
+                    <input className={controlClass} type="email" name="email" required placeholder="secretaria@darpe.local" />
+                  </Field>
+                  <Button type="submit">Entrar com e-mail de demonstração</Button>
                 </form>
-              ))}
-            </div>
+                <div className="mt-6 space-y-2">
+                  <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">Contas de prévia</p>
+                  {DEMO.map((item) => (
+                    <form action={demoSignIn} key={item.email}>
+                      <input type="hidden" name="email" value={item.email} />
+                      <button
+                        type="submit"
+                        className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        <span>
+                          <span className="block font-medium">{item.name}</span>
+                          <span className="text-xs text-muted-foreground">{item.role}</span>
+                        </span>
+                        <span className="text-xs text-muted-foreground">{item.email}</span>
+                      </button>
+                    </form>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                O e-mail Google precisa existir no cadastro Darpe, com situação ativa.
+              </p>
+            )}
             <p className="mt-6 text-sm text-muted-foreground">
               <Link href="/definicao" className="underline-offset-4 hover:underline">
                 Ler a definição e o PRD

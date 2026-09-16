@@ -46,8 +46,9 @@ export const nextSteps = [
       "Cadastros, escalas, presença, QR, foto, LGPD, modelos de relatório, PDF/CSV, avisos por recorte, incidentes, histórico do titular, escala visível ao vinculado, calendário/ICS, lembretes internos e métricas por período já estão no sistema.",
   },
   {
-    title: "Google OAuth em produção",
-    detail: "O mesmo provedor vale para os três painéis. Nesta prévia, o e-mail de demonstração continua disponível.",
+    title: "Produção: Google OAuth e Supabase",
+    detail:
+      "O Prisma usa Postgres. Preencha AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, AUTH_URL, DATABASE_URL (pooler 6543) e DIRECT_URL (5432) no ambiente. Em produção o login de demonstração fica desligado.",
   },
   {
     title: "Fora desta v1",

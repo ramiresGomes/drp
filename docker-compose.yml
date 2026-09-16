@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: drp-postgres
+    environment:
+      POSTGRES_USER: drp
+      POSTGRES_PASSWORD: drp
+      POSTGRES_DB: drp
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drp -d drp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - drp_pg:/var/lib/postgresql/data
+
+volumes:
+  drp_pg:

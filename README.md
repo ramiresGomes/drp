@@ -11,20 +11,73 @@ Há um cadastro Darpe por pessoa, vínculo institucional para autorizar escala, 
 - **Colaborador** — agenda mensal e exportação .ics, justificativa, avisos (ciência/confirmação), dados próprios, bloqueios de agenda e pedido LGPD.
 - **Encarregado regional** — concede vínculo institucional sem abrir o restante da secretaria.
 
-Todos os painéis usam o mesmo Google OAuth. Nesta prévia local, se `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` não estiverem definidos, o login de demonstração por e-mail cadastrado permanece disponível.
+Todos os painéis usam o mesmo Google OAuth. Em produção o login de demonstração fica desligado (`AUTH_ALLOW_DEMO` não definido). Localmente ele continua disponível.
 
-## Como rodar
+## Como rodar (local)
 
 ```bash
 npm install
 cp .env.example .env
+docker compose up -d
 npm run db:setup
 npm run dev
 ```
 
 Abra [http://127.0.0.1:43147](http://127.0.0.1:43147).
 
-O banco local é SQLite (`prisma/dev.db`). Em produção na Vercel será preciso um banco persistente e as chaves Google.
+O banco local é Postgres (`docker compose`, porta **5433**). Sem Docker, aponte `DATABASE_URL` e `DIRECT_URL` para o mesmo projeto Supabase de desenvolvimento.
+
+## Produção: Supabase + Google OAuth
+
+O Prisma fala com o **Postgres do Supabase**. O Auth continua no NextAuth (Google). Não use o Auth nativo do Supabase nesta v1.
+
+### 1. Banco no Supabase
+
+1. Crie um projeto em [supabase.com](https://supabase.com).
+2. Em **Project Settings → Database**, copie duas URIs:
+   - **Transaction pooler** (porta **6543**) → `DATABASE_URL` (Next.js / Vercel)
+   - **Session pooler ou conexão direta** (porta **5432**) → `DIRECT_URL` (migrations)
+3. Acrescente `?pgbouncer=true` na `DATABASE_URL` do pooler e `sslmode=require` nas duas.
+
+Exemplo (troque região, referência e senha):
+
+```bash
+DATABASE_URL="postgresql://postgres.REFERENCIA:SENHA@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require"
+DIRECT_URL="postgresql://postgres.REFERENCIA:SENHA@aws-0-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+```
+
+4. No deploy (Vercel ou equivalente), rode `npm run db:migrate` uma vez (ou use o build command `prisma migrate deploy && next build`) e, se quiser a base de exemplo, `npx prisma db seed`.
+5. Pessoas reais precisam de **e-mail Google** no cadastro Darpe. As contas `@darpe.local` só servem na prévia.
+
+### 2. Google OAuth
+
+1. No [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie um **ID do cliente OAuth** do tipo aplicativo da Web.
+2. Origens JavaScript autorizadas: `http://127.0.0.1:43147` e `https://SEU-DOMINIO`.
+3. URIs de redirecionamento: `http://127.0.0.1:43147/api/auth/callback/google` e `https://SEU-DOMINIO/api/auth/callback/google`.
+4. Preencha no ambiente (nunca no git):
+
+```bash
+AUTH_SECRET="(openssl rand -base64 32)"
+AUTH_URL="https://SEU-DOMINIO"
+AUTH_GOOGLE_ID="....apps.googleusercontent.com"
+AUTH_GOOGLE_SECRET="...."
+AUTH_TRUST_HOST="true"
+```
+
+Só entra quem já está cadastrado e **ativo**. E-mail Google fora do cadastro cai em `/entrar?error=nao-cadastrado`.
+
+### Variáveis no Vercel
+
+| Variável | Obrigatória | Uso |
+| --- | --- | --- |
+| `DATABASE_URL` | sim | Pooler 6543 |
+| `DIRECT_URL` | sim | Migrate 5432 |
+| `AUTH_SECRET` | sim | Sessão NextAuth |
+| `AUTH_URL` | sim | URL canônica do site |
+| `AUTH_GOOGLE_ID` | sim | Cliente OAuth |
+| `AUTH_GOOGLE_SECRET` | sim | Segredo OAuth |
+| `AUTH_TRUST_HOST` | recomendado | `true` |
+| `AUTH_ALLOW_DEMO` | não | `true` só em staging |
 
 ## Contas de demonstração
 
