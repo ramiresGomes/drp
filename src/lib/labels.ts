@@ -74,12 +74,14 @@ export const AUDIENCE_LABELS: Record<string, string> = {
   todos: "Toda a regional",
   admin: "Secretaria e coordenação",
   vinculados: "Pessoas com vínculo institucional",
+  escalados: "Quem está na escala",
   papel: "Por função",
   competencia: "Por competência",
   instituicao: "Por instituição",
   setor: "Por setor",
   cidade: "Por cidade",
   musicos: "Músicos",
+  pessoas: "Pessoas específicas",
 };
 
 export const INCIDENT_STATUS_LABELS: Record<string, string> = {

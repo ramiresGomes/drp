@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/audit";
 import { isToday, toDay } from "@/lib/dates";
 import { prisma } from "@/lib/db";
-import { fail, field } from "@/lib/forms";
+import { fail, field, ok } from "@/lib/forms";
+import { notifyPeople } from "@/lib/notifications";
 import { canScale } from "@/lib/permissions";
 import { requireCoordinator } from "@/lib/session";
 import { saveUpload } from "@/lib/uploads";
@@ -75,6 +76,7 @@ export async function addScaleEntry(formData: FormData) {
     fail(path, `Capacidade máxima de ${institution.capacity} pessoas neste atendimento.`);
   }
 
+  const plannedRole = field(formData, "plannedRole") || null;
   const dayStart = toDay(occurrence.date);
   const conflict = await prisma.scaleEntry.findFirst({
     where: {
@@ -93,11 +95,19 @@ export async function addScaleEntry(formData: FormData) {
 
   await prisma.scaleEntry.upsert({
     where: { occurrenceId_personId: { occurrenceId, personId } },
-    update: {},
-    create: { occurrenceId, personId },
+    update: { plannedRole },
+    create: { occurrenceId, personId, plannedRole },
   });
-  await audit(actor.id, "SCALE_ADD", "Occurrence", occurrenceId, "Pessoa incluída na escala");
+  await audit(actor.id, "SCALE_ADD", "Occurrence", occurrenceId, plannedRole ? `Pessoa incluída na escala · ${plannedRole}` : "Pessoa incluída na escala");
+  await notifyPeople({
+    title: `Você foi escalado em ${institution.name}`,
+    body: `A coordenação incluiu você na escala de ${institution.name} em ${occurrence.date.toLocaleDateString("pt-BR")}. Não é preciso confirmar.`,
+    personIds: [personId],
+    kind: "OPS",
+  });
   revalidatePath(`/app/coordenacao/${occurrence.series.institutionId}`);
+  revalidatePath("/app/agenda");
+  revalidatePath("/app/notificacoes");
 }
 
 export async function removeScaleEntry(formData: FormData) {
@@ -119,7 +129,7 @@ export async function cancelOccurrence(formData: FormData) {
   if (!reason) fail("/app/coordenacao", "Cancelamento exige justificativa.");
   const occurrence = await prisma.occurrence.findUnique({
     where: { id },
-    include: { series: true },
+    include: { series: { include: { institution: true } }, scale: true },
   });
   if (!occurrence) fail("/app/coordenacao", "Atendimento não encontrado.");
   const actor = await requireInstitutionAccess(occurrence.series.institutionId);
@@ -128,7 +138,15 @@ export async function cancelOccurrence(formData: FormData) {
     data: { cancelled: true, cancelReason: reason, cancelledById: actor.id },
   });
   await audit(actor.id, "CANCEL_OCCURRENCE", "Occurrence", id, reason);
+  await notifyPeople({
+    title: `Atendimento cancelado: ${occurrence.series.institution.name}`,
+    body: `O atendimento de ${occurrence.date.toLocaleDateString("pt-BR")} em ${occurrence.series.institution.name} foi cancelado. Motivo: ${reason}`,
+    personIds: occurrence.scale.map((entry) => entry.personId),
+    kind: "OPS",
+  });
   revalidatePath(`/app/coordenacao/${occurrence.series.institutionId}`);
+  revalidatePath("/app/agenda");
+  revalidatePath("/app/notificacoes");
 }
 
 export async function markParticipation(formData: FormData) {
@@ -146,10 +164,10 @@ export async function markParticipation(formData: FormData) {
   if (!isToday(occurrence.date)) {
     fail(path, "Presença só pode ser lançada no mesmo dia do atendimento.");
   }
-  if (occurrence.closedAt) {
+  if (occurrence.closedAt && !isToday(occurrence.date)) {
     fail(path, "A lista deste atendimento já foi fechada.");
   }
-  if (state !== "PRESENTE" && state !== "AUSENTE") {
+  if (!["PRESENTE", "AUSENTE", "ATRASADO"].includes(state)) {
     fail(path, "Situação de presença inválida.");
   }
 
@@ -236,4 +254,40 @@ export async function attachOccurrencePhoto(formData: FormData) {
   } catch (error) {
     fail(path, error instanceof Error ? error.message : "Não foi possível salvar o arquivo.");
   }
+}
+
+export async function requestReopenAttendance(formData: FormData) {
+  const id = field(formData, "id");
+  const reason = field(formData, "reason");
+  if (!reason) fail("/app/coordenacao", "Informe a justificativa para reabrir a lista.");
+  const occurrence = await prisma.occurrence.findUnique({
+    where: { id },
+    include: { series: { include: { institution: true } } },
+  });
+  if (!occurrence) fail("/app/coordenacao", "Atendimento não encontrado.");
+  const actor = await requireInstitutionAccess(occurrence.series.institutionId);
+  const path = `/app/coordenacao/${occurrence.series.institutionId}`;
+  if (!occurrence.closedAt) fail(path, "Esta lista ainda está aberta.");
+  if (isToday(occurrence.date)) {
+    fail(path, "No mesmo dia a coordenação corrige a presença direto, sem segunda aprovação.");
+  }
+  const pending = await prisma.dualApproval.findFirst({
+    where: { type: "REOPEN_ATTENDANCE", entityId: id, status: "PENDING" },
+  });
+  if (pending) fail(path, "Já existe um pedido de reabertura aguardando a secretaria.");
+  await prisma.dualApproval.create({
+    data: {
+      type: "REOPEN_ATTENDANCE",
+      entity: "Occurrence",
+      entityId: id,
+      payload: JSON.stringify({ institutionId: occurrence.series.institutionId }),
+      reason,
+      requestedById: actor.id,
+    },
+  });
+  await audit(actor.id, "REQUEST_REOPEN", "Occurrence", id, reason);
+  revalidatePath(path);
+  revalidatePath("/app/admin/aprovacoes");
+  revalidatePath("/app");
+  ok(path);
 }

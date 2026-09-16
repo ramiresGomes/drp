@@ -11,8 +11,23 @@ import { toDay } from "@/lib/dates";
 export async function submitJustification(formData: FormData) {
   const person = await requirePerson();
   const occurrenceId = field(formData, "occurrenceId");
+  const eventId = field(formData, "eventId");
   const reason = field(formData, "reason");
   if (!reason) fail("/app/agenda", "Informe a justificativa.");
+  if (eventId) {
+    const event = await prisma.regionalEvent.findUnique({ where: { id: eventId } });
+    if (!event || event.cancelled) fail("/app/agenda", "Evento não encontrado.");
+    const existing = await prisma.justification.findFirst({
+      where: { eventId, personId: person.id },
+    });
+    if (existing) {
+      await prisma.justification.update({ where: { id: existing.id }, data: { reason } });
+    } else {
+      await prisma.justification.create({ data: { eventId, personId: person.id, reason } });
+    }
+    revalidatePath("/app/agenda");
+    return;
+  }
 
   const occurrence = await prisma.occurrence.findUnique({
     where: { id: occurrenceId },
@@ -112,6 +127,15 @@ export async function checkInEvent(formData: FormData) {
   const longitude = parseCoordinate(field(formData, "longitude"));
   const event = await prisma.regionalEvent.findUnique({ where: { checkinToken: token } });
   if (!event || event.cancelled) fail("/app/agenda", "Evento não encontrado ou cancelado.");
+
+  const now = new Date();
+  const opensAt = new Date(event.startsAt.getTime() - 30 * 60 * 1000);
+  if (now < opensAt || now > event.endsAt) {
+    fail(
+      `/app/checkin/${token}`,
+      `O QR registra presença durante o evento (${event.startsAt.toLocaleString("pt-BR")} até ${event.endsAt.toLocaleString("pt-BR")}).`,
+    );
+  }
 
   if (event.latitude != null && event.longitude != null) {
     if (latitude == null || longitude == null) {

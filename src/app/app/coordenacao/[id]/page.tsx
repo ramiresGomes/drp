@@ -7,16 +7,18 @@ import {
   closeOccurrence,
   markParticipation,
   removeScaleEntry,
+  requestReopenAttendance,
 } from "@/app/actions/coordination";
 import { EmptyState, Flash } from "@/components/flash";
 import { areaClass, controlClass } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
 import { addDays } from "date-fns";
-import { isToday, formatDayLong } from "@/lib/dates";
+import { isToday, formatDayLong, toDay } from "@/lib/dates";
 import { isLinkActive } from "@/lib/links";
-import { STATE_LABELS } from "@/lib/labels";
+import { COMPETENCY_LABELS, STATE_LABELS } from "@/lib/labels";
 import { canScale } from "@/lib/permissions";
+import { plannedRoleLabel, scaleHints } from "@/lib/scale";
 import { requireCoordinator } from "@/lib/session";
 
 export default async function InstitutionCoordinationPage({
@@ -30,14 +32,18 @@ export default async function InstitutionCoordinationPage({
   const { id } = await params;
   const flash = await searchParams;
   if (!canScale(person, id)) notFound();
-  const since = addDays(new Date(), -1);
+  const since = addDays(new Date(), -14);
 
   const institution = await prisma.institution.findUnique({
     where: { id },
     include: {
       city: true,
       sector: true,
-      links: { include: { person: true } },
+      links: {
+        include: {
+          person: { include: { availability: true, availabilityBlocks: true, competencies: true } },
+        },
+      },
       series: {
         include: {
           occurrences: {
@@ -55,6 +61,21 @@ export default async function InstitutionCoordinationPage({
   });
   if (!institution) notFound();
   const linked = institution.links.filter((link) => isLinkActive(link) && link.person.status === "ACTIVE");
+  const occurrenceIds = institution.series.flatMap((series) => series.occurrences.map((item) => item.id));
+  const [conflicts, reopenRequests] = await Promise.all([
+    prisma.scaleEntry.findMany({
+      where: {
+        personId: { in: linked.map((link) => link.personId) },
+        occurrence: { cancelled: false, date: { gte: since } },
+      },
+      include: { occurrence: { include: { series: { include: { institution: true } } } } },
+    }),
+    occurrenceIds.length
+      ? prisma.dualApproval.findMany({
+          where: { type: "REOPEN_ATTENDANCE", entityId: { in: occurrenceIds }, status: "PENDING" },
+        })
+      : Promise.resolve([]),
+  ]);
 
   return (
     <div>
@@ -76,6 +97,29 @@ export default async function InstitutionCoordinationPage({
               const today = isToday(occurrence.date);
               const scaledIds = new Set(occurrence.scale.map((entry) => entry.personId));
               const extras = linked.filter((link) => !scaledIds.has(link.personId));
+              const dayStart = toDay(occurrence.date);
+              const dayConflicts = new Map<string, string>();
+              for (const entry of conflicts) {
+                if (entry.occurrenceId === occurrence.id) continue;
+                const sameDay = entry.occurrence.date >= dayStart && entry.occurrence.date < addDays(dayStart, 1);
+                if (sameDay) dayConflicts.set(entry.personId, entry.occurrence.series.institution.name);
+              }
+              const hints = scaleHints(
+                linked.map((link) => ({
+                  personId: link.personId,
+                  name: link.person.name,
+                  status: link.person.status,
+                  competencies: link.person.competencies.map((item) => item.competency),
+                  availability: link.person.availability,
+                  blocks: link.person.availabilityBlocks,
+                  link: { startAt: link.startAt, endAt: link.endAt },
+                })),
+                occurrence.date,
+                scaledIds,
+                dayConflicts,
+              );
+              const pendingReopen = reopenRequests.find((item) => item.entityId === occurrence.id);
+              const canMarkToday = today;
               return (
                 <section key={occurrence.id} className="rounded-2xl border border-border p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -83,7 +127,15 @@ export default async function InstitutionCoordinationPage({
                       <h2 className="text-xl capitalize">{formatDayLong(occurrence.date)}</h2>
                       <p className="text-sm text-muted-foreground">
                         {series.label}
-                        {occurrence.cancelled ? " · cancelado" : occurrence.closedAt ? " · lista fechada" : today ? " · hoje" : ""}
+                        {occurrence.cancelled
+                          ? " · cancelado"
+                          : occurrence.closedAt
+                            ? today
+                              ? " · lista fechada · correção no mesmo dia"
+                              : " · lista fechada"
+                            : today
+                              ? " · hoje"
+                              : ""}
                       </p>
                     </div>
                   </div>
@@ -104,6 +156,7 @@ export default async function InstitutionCoordinationPage({
                                 <div>
                                   <p className="font-medium">{entry.person.name}</p>
                                   <p className="text-xs text-muted-foreground">
+                                    {plannedRoleLabel(entry.plannedRole) ? `${plannedRoleLabel(entry.plannedRole)} · ` : ""}
                                     {participation
                                       ? `${STATE_LABELS[participation.state] ?? participation.state}${participation.extra ? " · extra" : ""}`
                                       : "Ainda sem presença"}
@@ -111,7 +164,7 @@ export default async function InstitutionCoordinationPage({
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                  {today && !occurrence.closedAt ? (
+                                  {canMarkToday && (!occurrence.closedAt || today) ? (
                                     <>
                                       <form action={markParticipation}>
                                         <input type="hidden" name="occurrenceId" value={occurrence.id} />
@@ -119,6 +172,14 @@ export default async function InstitutionCoordinationPage({
                                         <input type="hidden" name="state" value="PRESENTE" />
                                         <Button type="submit" size="sm">
                                           Presente
+                                        </Button>
+                                      </form>
+                                      <form action={markParticipation}>
+                                        <input type="hidden" name="occurrenceId" value={occurrence.id} />
+                                        <input type="hidden" name="personId" value={entry.personId} />
+                                        <input type="hidden" name="state" value="ATRASADO" />
+                                        <Button type="submit" size="sm" variant="outline">
+                                          Atrasado
                                         </Button>
                                       </form>
                                       <form action={markParticipation}>
@@ -146,13 +207,22 @@ export default async function InstitutionCoordinationPage({
                         )}
                       </div>
 
-                      {!occurrence.closedAt && extras.length > 0 ? (
-                        <form action={addScaleEntry} className="mt-4 flex flex-col gap-2 sm:flex-row">
+                      {!occurrence.closedAt && hints.length > 0 ? (
+                        <form action={addScaleEntry} className="mt-4 grid gap-2 sm:grid-cols-[1fr_10rem_auto]">
                           <input type="hidden" name="occurrenceId" value={occurrence.id} />
                           <select className={controlClass} name="personId" required>
-                            {extras.map((link) => (
-                              <option key={link.id} value={link.personId}>
-                                {link.person.name}
+                            <option value="">Pessoa disponível</option>
+                            {hints.map((hint) => (
+                              <option key={hint.personId} value={hint.personId} disabled={!hint.eligible}>
+                                {hint.label}
+                              </option>
+                            ))}
+                          </select>
+                          <select className={controlClass} name="plannedRole">
+                            <option value="">Função prevista</option>
+                            {Object.entries(COMPETENCY_LABELS).map(([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
                               </option>
                             ))}
                           </select>
@@ -162,7 +232,7 @@ export default async function InstitutionCoordinationPage({
                         </form>
                       ) : null}
 
-                      {today && !occurrence.closedAt ? (
+                      {today ? (
                         <div className="mt-4 grid gap-3">
                           <p className="text-sm font-medium">Participação extra</p>
                           {extras.length === 0 ? (
@@ -182,9 +252,25 @@ export default async function InstitutionCoordinationPage({
                           )}
                           <form action={closeOccurrence}>
                             <input type="hidden" name="id" value={occurrence.id} />
-                            <Button type="submit">Fechar lista de hoje</Button>
+                            <Button type="submit">{occurrence.closedAt ? "Atualizar lista de hoje" : "Fechar lista de hoje"}</Button>
                           </form>
                         </div>
+                      ) : null}
+
+                      {!today && occurrence.closedAt ? (
+                        pendingReopen ? (
+                          <p className="mt-4 text-sm text-muted-foreground">
+                            Pedido de reabertura enviado à secretaria. Aguarda dupla aprovação.
+                          </p>
+                        ) : (
+                          <form action={requestReopenAttendance} className="mt-4 grid gap-2">
+                            <input type="hidden" name="id" value={occurrence.id} />
+                            <textarea className={areaClass} name="reason" placeholder="Por que reabrir a lista depois do dia?" required />
+                            <Button type="submit" variant="outline">
+                              Pedir reabertura (dupla aprovação)
+                            </Button>
+                          </form>
+                        )
                       ) : null}
 
                       <form action={addOccurrenceNote} className="mt-4 grid gap-2">

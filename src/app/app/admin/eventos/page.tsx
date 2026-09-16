@@ -59,6 +59,13 @@ export default async function EventsPage({
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="mandatory" /> Tipo obrigatório por padrão
               </label>
+              <Field label="Público padrão">
+                <select className={controlClass} name="audience" defaultValue="todos">
+                  <option value="todos">Toda a regional</option>
+                  <option value="escalados">Quem está na escala</option>
+                  <option value="musicos">Músicos</option>
+                </select>
+              </Field>
               <Button type="submit">Salvar tipo</Button>
             </form>
           </CardContent>
@@ -83,6 +90,9 @@ export default async function EventsPage({
               </Field>
               <Field label="Início">
                 <input className={controlClass} type="datetime-local" name="startsAt" required />
+              </Field>
+              <Field label="Término (opcional)">
+                <input className={controlClass} type="datetime-local" name="endsAt" />
               </Field>
               <Field label="Local">
                 <input className={controlClass} name="location" required />
@@ -120,6 +130,7 @@ export default async function EventsPage({
               <p className="text-sm text-muted-foreground">
                 {event.type.name} · {formatDateTime(event.startsAt)} · {event.location}
                 {event.mandatory ? " · obrigatório" : ""}
+                {event.audience && event.audience !== "todos" ? ` · público ${event.audience}` : ""}
                 {event.cancelled ? " · cancelado" : ""}
                 {event.presidingElder ? ` · preside ${event.presidingElder}` : ""}
                 {event.latitude != null && event.longitude != null ? " · check-in com geofence" : ""}

@@ -11,7 +11,7 @@ import { parseCoordinate } from "@/lib/geo";
 import { STATUS_LABELS } from "@/lib/labels";
 import { canUseCoordinatorPanel, isAdmin, musicianSingerConflict } from "@/lib/permissions";
 import { ensureOccurrences } from "@/lib/occurrences";
-import { deliverNotification, resolveAudienceRef } from "@/lib/notifications";
+import { deliverNotification, notifyPeople, resolveAudienceRef } from "@/lib/notifications";
 import { reportQuery, type ReportFilters } from "@/lib/reports";
 import { requireAdmin, requireLinker, requirePerson } from "@/lib/session";
 
@@ -312,6 +312,7 @@ export async function createEventType(formData: FormData) {
     data: {
       name,
       mandatory: checked(formData, "mandatory"),
+      audience: field(formData, "audience") || "todos",
       checklist: JSON.stringify(items),
     },
   });
@@ -332,6 +333,7 @@ export async function createRegionalEvent(formData: FormData) {
   const type = await prisma.eventType.findUnique({ where: { id: typeId } });
   if (!type) fail("/app/admin/eventos", "Tipo de evento não encontrado.");
   const start = new Date(startsAt);
+  const endsAtRaw = field(formData, "endsAt");
   const latitude = parseCoordinate(field(formData, "latitude"));
   const longitude = parseCoordinate(field(formData, "longitude"));
   const radiusRaw = field(formData, "radiusMeters");
@@ -343,12 +345,13 @@ export async function createRegionalEvent(formData: FormData) {
       title,
       typeId,
       startsAt: start,
-      endsAt: addHours(start, 2),
+      endsAt: endsAtRaw ? new Date(endsAtRaw) : addHours(start, 2),
       location,
       latitude,
       longitude,
       radiusMeters: radiusRaw ? Number(radiusRaw) : 250,
       mandatory: checked(formData, "mandatory") || type.mandatory,
+      audience: type.audience || "todos",
       checkinToken: randomBytes(12).toString("hex"),
       createdById: actor.id,
       checklistJson: type.checklist,
@@ -492,9 +495,18 @@ export async function decideDualApproval(formData: FormData) {
     });
   } else {
     if (request.type === "CANCEL_MANDATORY_EVENT") {
-      await prisma.regionalEvent.update({
+      const event = await prisma.regionalEvent.update({
         where: { id: request.entityId },
         data: { cancelled: true, cancelReason: request.reason },
+      });
+      await notifyPeople({
+        title: `Evento cancelado: ${event.title}`,
+        body: `${event.title} foi cancelado. Motivo: ${request.reason}`,
+        personIds: (
+          await prisma.person.findMany({ where: { status: "ACTIVE" }, select: { id: true } })
+        ).map((person) => person.id),
+        kind: "MANDATORY",
+        requiresAck: true,
       });
     }
     if (request.type === "LGPD_ERASURE") {
@@ -633,6 +645,7 @@ export async function saveReportTemplate(formData: FormData) {
     situacao: field(formData, "situacao") || null,
     fato: field(formData, "fato") || "atendimentos",
     anonimizado: field(formData, "anonimizado") || "1",
+    periodo: field(formData, "periodo") || "mes",
   };
   await prisma.reportTemplate.create({
     data: {

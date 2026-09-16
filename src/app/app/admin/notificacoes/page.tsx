@@ -10,7 +10,7 @@ import { audienceCaption } from "@/lib/notifications";
 import { formatDateTime } from "@/lib/dates";
 import { requireAdmin } from "@/lib/session";
 
-const AUDIENCE_OPTIONS = ["todos", "admin", "vinculados", "papel", "competencia", "instituicao", "setor", "cidade"];
+const AUDIENCE_OPTIONS = ["todos", "admin", "vinculados", "escalados", "papel", "competencia", "instituicao", "setor", "cidade"];
 
 export default async function AdminNotificationsPage({
   searchParams,

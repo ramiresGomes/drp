@@ -2,26 +2,29 @@ import { auth } from "@/auth";
 import { canUseCoordinatorPanel, isAdmin } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { requirePerson } from "@/lib/session";
-import { getOperationalPendencies } from "@/lib/operations";
+import { getDashboardMetrics, getOperationalPendencies } from "@/lib/operations";
 import { formatDay, formatDateTime } from "@/lib/dates";
+import { PERIOD_KEYS, PERIOD_LABELS, parsePeriod } from "@/lib/period";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { controlClass } from "@/components/field";
 import Link from "next/link";
-import { startOfMonth, endOfMonth, addDays } from "date-fns";
+import { startOfDay, addDays } from "date-fns";
 
-export default async function AppHomePage() {
+export default async function AppHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string }>;
+}) {
   const person = await requirePerson();
   const session = await auth();
-  const from = startOfMonth(new Date());
-  const to = endOfMonth(addDays(new Date(), 40));
+  const params = await searchParams;
+  const periodo = parsePeriod(params.periodo);
+  const metrics = await getDashboardMetrics(periodo);
 
-  const [occurrences, events, pendingApprovals, unread, pendencies] = await Promise.all([
-    prisma.occurrence.findMany({
-      where: { date: { gte: from, lte: to } },
-      include: { series: { include: { institution: true } }, participations: true, scale: true },
-    }),
+  const [events, pendingApprovals, unread, pendencies] = await Promise.all([
     prisma.regionalEvent.findMany({
-      where: { startsAt: { gte: from } },
+      where: { startsAt: { gte: new Date() } },
       orderBy: { startsAt: "asc" },
       take: 6,
     }),
@@ -43,16 +46,14 @@ export default async function AppHomePage() {
     isAdmin(person) ? getOperationalPendencies() : Promise.resolve(null),
   ]);
 
-  const previstos = occurrences.filter((item) => !item.cancelled && !item.closedAt).length;
-  const realizados = occurrences.filter((item) => item.closedAt).length;
-  const cancelados = occurrences.filter((item) => item.cancelled).length;
-  const presentes = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "PRESENTE" && !item.extra).length;
-  const extras = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "PRESENTE" && item.extra).length;
-  const ausentes = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "AUSENTE").length;
-  const justificadas = occurrences.flatMap((item) => item.participations).filter((item) => item.state === "JUSTIFICADO").length;
-  const todayOpen = occurrences.filter(
-    (item) => !item.cancelled && !item.closedAt && formatDay(item.date) === formatDay(new Date()),
-  );
+  const dayStart = startOfDay(new Date());
+  const todayOpen = await prisma.occurrence.count({
+    where: {
+      cancelled: false,
+      closedAt: null,
+      date: { gte: dayStart, lt: addDays(dayStart, 1) },
+    },
+  });
 
   return (
     <div>
@@ -63,16 +64,34 @@ export default async function AppHomePage() {
           Sistema do Darpe da Regional Uberlândia. Entrada com {session?.user?.email}. Presença de atendimento fecha no
           mesmo dia; eventos obrigatórios valem para toda a regional.
         </p>
+        <form method="get" className="mt-4 flex max-w-xs items-end gap-2">
+          <label className="grid flex-1 gap-1 text-sm">
+            <span className="font-medium">Período</span>
+            <select className={controlClass} name="periodo" defaultValue={periodo}>
+              {PERIOD_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {PERIOD_LABELS[key]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="submit" variant="outline">
+            Ver
+          </Button>
+        </form>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Recorte {formatDay(metrics.range.start)} — {formatDay(metrics.range.end)}
+        </p>
       </header>
 
       <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Previstos" value={previstos} hint="Atendimentos ainda abertos no período" />
-        <Metric title="Realizados" value={realizados} hint="Listas fechadas" />
-        <Metric title="Cancelados" value={cancelados} hint="Permanecem cancelados nas métricas" />
+        <Metric title="Previstos" value={metrics.previstos} hint="Atendimentos ainda abertos no período" />
+        <Metric title="Realizados" value={metrics.realizados} hint="Listas fechadas" />
+        <Metric title="Cancelados" value={metrics.cancelados} hint="Permanecem cancelados nas métricas" />
         <Metric
-          title="Presença"
-          value={presentes + extras + ausentes + justificadas === 0 ? "—" : `${presentes}`}
-          hint={`${extras} extras · ${ausentes} faltas · ${justificadas} justificadas`}
+          title="Presença na escala"
+          value={metrics.presenceRate == null ? "—" : `${metrics.presenceRate}%`}
+          hint={`${metrics.presentes} presentes · ${metrics.extras} extras · ${metrics.atrasados} atrasados · ${metrics.ausentes} faltas · ${metrics.justificadas} justificadas`}
         />
       </section>
 
@@ -85,8 +104,11 @@ export default async function AppHomePage() {
             <p>{unread} aviso(s) sem leitura.</p>
             {isAdmin(person) ? <p>{pendingApprovals} pedido(s) de dupla aprovação.</p> : null}
             {isAdmin(person) && pendencies ? <p>{pendencies.openIncidents} incidente(s) em aberto.</p> : null}
-            <p>{todayOpen.length} atendimento(s) de hoje ainda sem lista fechada.</p>
-            {unread === 0 && pendingApprovals === 0 && todayOpen.length === 0 ? (
+            <p>{todayOpen} atendimento(s) de hoje ainda sem lista fechada.</p>
+            {metrics.highJustifications ? (
+              <p className="text-destructive">Volume alto de justificativas no período — mesmo tipo de alerta que falta.</p>
+            ) : null}
+            {unread === 0 && pendingApprovals === 0 && todayOpen === 0 && !metrics.highJustifications ? (
               <p>Nada pendente neste momento.</p>
             ) : null}
           </CardContent>
@@ -132,6 +154,72 @@ export default async function AppHomePage() {
             )}
           </CardContent>
         </Card>
+      </section>
+
+      <section className="mb-8 grid gap-4 md:grid-cols-3">
+        <Card className="shadow-none">
+          <CardHeader>
+            <CardTitle className="text-base">Eventos obrigatórios</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            {metrics.lastMeeting ? (
+              <p>
+                Última reunião · {metrics.lastMeeting.title}: {metrics.lastMeeting.presentes} presentes ·{" "}
+                {metrics.lastMeeting.justificados} justificados
+              </p>
+            ) : (
+              <p>Nenhuma reunião do Darpe encerrada.</p>
+            )}
+            {metrics.lastRehearsal ? (
+              <p>
+                Último ensaio · {metrics.lastRehearsal.title}: {metrics.lastRehearsal.presentes} presentes ·{" "}
+                {metrics.lastRehearsal.justificados} justificados
+              </p>
+            ) : (
+              <p>Nenhum ensaio encerrado.</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="shadow-none">
+          <CardHeader>
+            <CardTitle className="text-base">Crescimento</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>{metrics.newPeople} colaborador(es) cadastrado(s) no período.</p>
+            <p>{metrics.newInstitutions} instituição(ões) nova(s) no período.</p>
+          </CardContent>
+        </Card>
+        {pendencies ? (
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Capacidade</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {pendencies.capacityAlerts.length === 0 ? (
+                <p>Nenhuma instituição próxima do limite nos próximos 10 dias.</p>
+              ) : (
+                pendencies.capacityAlerts.map((item) => (
+                  <p key={item.id}>
+                    {item.series.institution.name} · {formatDay(item.date)} · {item.scale.length}/
+                    {item.series.institution.capacity}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Agenda pessoal</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>Exporte os atendimentos e eventos da sua agenda para o calendário do aparelho.</p>
+              <Button render={<Link href="/api/agenda/ics" />} variant="outline" size="sm">
+                Baixar .ics
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </section>
 
       {pendencies ? (

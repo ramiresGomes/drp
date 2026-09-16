@@ -15,12 +15,18 @@ type AudiencePerson = {
     endAt: Date | null;
     institution: { sectorId: string; cityId: string };
   }[];
+  scaleEntries: { id: string }[];
 };
+
+export function isOptionalNotification(kind: string) {
+  return kind === "INFO";
+}
 
 export const AUDIENCE_KEYS = [
   "todos",
   "admin",
   "vinculados",
+  "escalados",
   "papel",
   "competencia",
   "instituicao",
@@ -50,6 +56,7 @@ export function personMatchesAudience(person: AudiencePerson, audience: string, 
     );
   }
   if (audience === "vinculados") return activeLinks.length > 0;
+  if (audience === "escalados") return activeLinks.length > 0 || person.scaleEntries.length > 0;
   if (audience === "papel") return Boolean(audienceRef && activeRoles.some((item) => item.role === audienceRef));
   if (audience === "competencia") {
     return Boolean(audienceRef && person.competencies.some((item) => item.competency === audienceRef));
@@ -77,6 +84,10 @@ export async function loadAudiencePeople() {
       competencies: true,
       links: { include: { institution: true } },
       roles: true,
+      scaleEntries: {
+        where: { occurrence: { cancelled: false, date: { gte: new Date() } } },
+        take: 1,
+      },
     },
   });
 }
@@ -90,7 +101,7 @@ export async function deliverNotification(notificationId: string) {
   const recipients = people.filter(
     (person) =>
       personMatchesAudience(person, notification.audience, notification.audienceRef) &&
-      (notification.kind === "MANDATORY" || !person.muteOptionalNotifications),
+      (!isOptionalNotification(notification.kind) || !person.muteOptionalNotifications),
   );
   if (recipients.length > 0) {
     await prisma.notificationReceipt.createMany({
@@ -113,6 +124,68 @@ export async function deliverScheduledNotifications() {
   });
   for (const item of due) {
     await deliverNotification(item.id);
+  }
+}
+
+export async function notifyPeople(input: {
+  title: string;
+  body: string;
+  personIds: string[];
+  kind?: string;
+  requiresAck?: boolean;
+}) {
+  const unique = [...new Set(input.personIds.filter(Boolean))];
+  if (unique.length === 0) return;
+  const kind = input.kind ?? "OPS";
+  const people = await prisma.person.findMany({
+    where: { id: { in: unique }, status: "ACTIVE" },
+    select: { id: true, muteOptionalNotifications: true },
+  });
+  const recipients = people.filter((person) => !isOptionalNotification(kind) || !person.muteOptionalNotifications);
+  const notification = await prisma.notification.create({
+    data: {
+      title: input.title,
+      body: input.body,
+      audience: "pessoas",
+      kind,
+      requiresAck: input.requiresAck ?? false,
+      sentAt: new Date(),
+    },
+  });
+  if (recipients.length > 0) {
+    await prisma.notificationReceipt.createMany({
+      data: recipients.map((person) => ({ notificationId: notification.id, personId: person.id })),
+    });
+  }
+  return notification;
+}
+
+export async function remindUpcomingEvents() {
+  const now = new Date();
+  const until = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const events = await prisma.regionalEvent.findMany({
+    where: {
+      cancelled: false,
+      remindedAt: null,
+      startsAt: { gte: now, lte: until },
+    },
+  });
+  for (const event of events) {
+    const audience = event.mandatory ? "todos" : event.audience || "escalados";
+    const notification = await prisma.notification.create({
+      data: {
+        title: `Lembrete: ${event.title}`,
+        body: `${event.title} em ${event.location}. Evento ${event.mandatory ? "obrigatório para toda a regional" : "para o público convocado"}.`,
+        audience,
+        kind: event.mandatory ? "MANDATORY" : "OPS",
+        requiresAck: event.mandatory,
+      },
+    });
+    await deliverNotification(notification.id);
+    await prisma.regionalEvent.update({
+      where: { id: event.id },
+      data: { remindedAt: now },
+    });
   }
 }
 

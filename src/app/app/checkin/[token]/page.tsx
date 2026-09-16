@@ -35,7 +35,12 @@ export default async function CheckinPage({
       ) : already ? (
         <p className="mt-6 text-sm text-primary">Sua presença neste evento já está registrada.</p>
       ) : (
-        <CheckinForm token={token} hasGeofence={event.latitude != null && event.longitude != null} />
+        <>
+          <p className="mt-4 text-sm text-muted-foreground">
+            O QR registra presença de 30 minutos antes do início até {formatDateTime(event.endsAt)}.
+          </p>
+          <CheckinForm token={token} hasGeofence={event.latitude != null && event.longitude != null} />
+        </>
       )}
     </div>
   );

@@ -5,7 +5,11 @@ import { generateDates } from "@/lib/dates";
 export async function ensureOccurrences(seriesId?: string) {
   const until = addDays(new Date(), 70);
   const seriesList = await prisma.recurringSeries.findMany({
-    where: { active: true, ...(seriesId ? { id: seriesId } : {}) },
+    where: {
+      active: true,
+      institution: { active: true },
+      ...(seriesId ? { id: seriesId } : {}),
+    },
   });
 
   for (const series of seriesList) {

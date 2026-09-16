@@ -3,10 +3,10 @@ import { AdminNav } from "@/components/admin-nav";
 import { EmptyState } from "@/components/flash";
 import { controlClass, Field } from "@/components/field";
 import { Button } from "@/components/ui/button";
-import { occurrenceReportWhere, reportQuery, isAnonymized, type ReportFilters } from "@/lib/reports";
+import { loadReportTable, reportQuery, isAnonymized, type ReportFilters } from "@/lib/reports";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
-import { formatDay, formatDateTime } from "@/lib/dates";
+import { PERIOD_KEYS, PERIOD_LABELS } from "@/lib/period";
 import Link from "next/link";
 
 export default async function ReportsPage({
@@ -18,42 +18,15 @@ export default async function ReportsPage({
   const params = await searchParams;
   const fato = params.fato || "atendimentos";
   const anonymized = isAnonymized(params);
-  const [sectors, cities, templates] = await Promise.all([
+  const periodo = params.periodo || "";
+  const [sectors, cities, templates, table] = await Promise.all([
     prisma.sector.findMany({ orderBy: { code: "asc" } }),
     prisma.city.findMany({ orderBy: { name: "asc" } }),
     prisma.reportTemplate.findMany({ orderBy: { createdAt: "desc" } }),
+    loadReportTable({ ...params, fato, periodo, anonimizado: anonymized ? "1" : "0" }),
   ]);
 
-  const occurrences =
-    fato === "atendimentos"
-      ? await prisma.occurrence.findMany({
-          where: occurrenceReportWhere(params),
-          include: {
-            series: { include: { institution: { include: { city: true, sector: true } } } },
-            participations: { include: { person: true } },
-          },
-          orderBy: { date: "desc" },
-          take: 120,
-        })
-      : [];
-  const events =
-    fato === "eventos"
-      ? await prisma.regionalEvent.findMany({
-          include: { type: true, attendances: true },
-          orderBy: { startsAt: "desc" },
-          take: 80,
-        })
-      : [];
-  const baptisms =
-    fato === "batismos"
-      ? await prisma.baptism.findMany({
-          include: { event: true },
-          orderBy: { event: { startsAt: "desc" } },
-          take: 80,
-        })
-      : [];
-
-  const query = reportQuery({ ...params, fato, anonimizado: anonymized ? "1" : "0" });
+  const query = reportQuery({ ...params, fato, periodo, anonimizado: anonymized ? "1" : "0" });
   const exportHref = `/api/relatorios/export${query.size ? `?${query.toString()}` : ""}`;
   const pdfHref = `/relatorio-pdf${query.size ? `?${query.toString()}` : ""}`;
 
@@ -62,16 +35,28 @@ export default async function ReportsPage({
       <AdminNav current="/app/admin/relatorios" />
       <h1 className="mb-2 font-heading text-3xl">Relatórios</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Construtor controlado: escolha o fato, o recorte e se o relatório amplo permanece anonimizado. Identificação
-        individual só com recorte explícito da secretaria.
+        Construtor controlado: escolha o fato, o recorte temporal e se o relatório amplo permanece anonimizado.
+        Identificação individual só com recorte explícito da secretaria.
       </p>
 
-      <form method="get" className="mb-4 grid gap-3 rounded-xl border border-border p-4 md:grid-cols-5">
+      <form method="get" className="mb-4 grid gap-3 rounded-xl border border-border p-4 md:grid-cols-6">
         <Field label="Fato">
           <select className={controlClass} name="fato" defaultValue={fato}>
             <option value="atendimentos">Participações em atendimento</option>
+            <option value="faltas">Faltas e faltas justificadas</option>
             <option value="eventos">Eventos obrigatórios</option>
             <option value="batismos">Batismos registrados</option>
+            <option value="crescimento">Crescimento</option>
+          </select>
+        </Field>
+        <Field label="Período">
+          <select className={controlClass} name="periodo" defaultValue={periodo}>
+            <option value="">Todo o histórico</option>
+            {PERIOD_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {PERIOD_LABELS[key]}
+              </option>
+            ))}
           </select>
         </Field>
         <Field label="Setor">
@@ -106,7 +91,7 @@ export default async function ReportsPage({
           <input type="checkbox" name="anonimizado" value="0" defaultChecked={!anonymized} />
           Identificar pessoas
         </label>
-        <div className="flex items-end gap-2 md:col-span-5">
+        <div className="flex items-end gap-2 md:col-span-6">
           <Button type="submit" variant="outline">
             Filtrar
           </Button>
@@ -124,6 +109,7 @@ export default async function ReportsPage({
         <input type="hidden" name="cidade" value={params.cidade ?? ""} />
         <input type="hidden" name="situacao" value={params.situacao ?? ""} />
         <input type="hidden" name="fato" value={fato} />
+        <input type="hidden" name="periodo" value={periodo} />
         <input type="hidden" name="anonimizado" value={anonymized ? "1" : "0"} />
         <Field label="Salvar modelo">
           <input className={controlClass} name="name" placeholder="Nome do modelo" required />
@@ -156,125 +142,34 @@ export default async function ReportsPage({
         </div>
       ) : null}
 
-      {fato === "atendimentos" && occurrences.length === 0 ? (
-        <EmptyState title="Sem ocorrências" description="Ajuste os filtros ou gere séries para acompanhar os números." />
-      ) : null}
-      {fato === "atendimentos" && occurrences.length > 0 ? (
+      {table.rows.length === 0 ? (
+        <EmptyState title="Sem registros" description="Ajuste os filtros ou gere séries para acompanhar os números." />
+      ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="px-3 py-2 font-medium">Data</th>
-                <th className="px-3 py-2 font-medium">Instituição</th>
-                <th className="px-3 py-2 font-medium">Cidade</th>
-                <th className="px-3 py-2 font-medium">Setor</th>
-                <th className="px-3 py-2 font-medium">Situação</th>
-                <th className="px-3 py-2 font-medium">Presentes</th>
-                <th className="px-3 py-2 font-medium">Extras</th>
-                <th className="px-3 py-2 font-medium">Faltas</th>
-                <th className="px-3 py-2 font-medium">Justificados</th>
-                {!anonymized ? <th className="px-3 py-2 font-medium">Pessoas</th> : null}
+                {table.header.map((cell) => (
+                  <th key={cell} className="px-3 py-2 font-medium">
+                    {cell}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {occurrences.map((item) => (
-                <tr key={item.id} className="border-t border-border">
-                  <td className="px-3 py-2">{formatDay(item.date)}</td>
-                  <td className="px-3 py-2">{item.series.institution.name}</td>
-                  <td className="px-3 py-2">{item.series.institution.city.name}</td>
-                  <td className="px-3 py-2">{item.series.institution.sector.code}</td>
-                  <td className="px-3 py-2">
-                    {item.cancelled ? "Cancelado" : item.closedAt ? "Realizado" : "Previsto"}
-                  </td>
-                  <td className="px-3 py-2">{item.participations.filter((row) => row.state === "PRESENTE" && !row.extra).length}</td>
-                  <td className="px-3 py-2">{item.participations.filter((row) => row.state === "PRESENTE" && row.extra).length}</td>
-                  <td className="px-3 py-2">{item.participations.filter((row) => row.state === "AUSENTE").length}</td>
-                  <td className="px-3 py-2">{item.participations.filter((row) => row.state === "JUSTIFICADO").length}</td>
-                  {!anonymized ? (
-                    <td className="px-3 py-2 text-xs">
-                      {item.participations.map((row) => `${row.person.name} (${row.state})`).join("; ") || "—"}
+              {table.rows.map((row, index) => (
+                <tr key={index} className="border-t border-border">
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${index}-${cellIndex}`} className="px-3 py-2">
+                      {cell}
                     </td>
-                  ) : null}
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      ) : null}
-
-      {fato === "eventos" ? (
-        events.length === 0 ? (
-          <EmptyState title="Sem eventos" description="Publique um evento regional para ver a participação." />
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Evento</th>
-                  <th className="px-3 py-2 font-medium">Tipo</th>
-                  <th className="px-3 py-2 font-medium">Início</th>
-                  <th className="px-3 py-2 font-medium">Presenças</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event) => (
-                  <tr key={event.id} className="border-t border-border">
-                    <td className="px-3 py-2">{event.title}</td>
-                    <td className="px-3 py-2">{event.type.name}</td>
-                    <td className="px-3 py-2">{formatDateTime(event.startsAt)}</td>
-                    <td className="px-3 py-2">{event.attendances.length}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : null}
-
-      {fato === "batismos" ? (
-        baptisms.length === 0 ? (
-          <EmptyState title="Sem batismos" description="Os nomes lançados nos eventos de batismo aparecem aqui." />
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Evento</th>
-                  <th className="px-3 py-2 font-medium">Data</th>
-                  <th className="px-3 py-2 font-medium">{anonymized ? "Registros" : "Batizando"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {anonymized ? (
-                  Object.entries(
-                    baptisms.reduce<Record<string, number>>((acc, item) => {
-                      acc[item.eventId] = (acc[item.eventId] ?? 0) + 1;
-                      return acc;
-                    }, {}),
-                  ).map(([eventId, count]) => {
-                    const event = baptisms.find((item) => item.eventId === eventId)?.event;
-                    return (
-                      <tr key={eventId} className="border-t border-border">
-                        <td className="px-3 py-2">{event?.title}</td>
-                        <td className="px-3 py-2">{event ? formatDateTime(event.startsAt) : "—"}</td>
-                        <td className="px-3 py-2">{count}</td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  baptisms.map((item) => (
-                    <tr key={item.id} className="border-t border-border">
-                      <td className="px-3 py-2">{item.event.title}</td>
-                      <td className="px-3 py-2">{formatDateTime(item.event.startsAt)}</td>
-                      <td className="px-3 py-2">{item.fullName}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : null}
+      )}
     </div>
   );
 }

@@ -4,10 +4,26 @@ import { EmptyState, Flash } from "@/components/flash";
 import { areaClass, controlClass } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
-import { formatDateTime, formatDayLong } from "@/lib/dates";
+import { dayKey, formatDateTime, formatDayLong, monthGrid } from "@/lib/dates";
 import { isLinkActive } from "@/lib/links";
-import { canUseCoordinatorPanel } from "@/lib/permissions";
+import { canUseCoordinatorPanel, isAdmin } from "@/lib/permissions";
 import { requirePerson } from "@/lib/session";
+import { plannedRoleLabel } from "@/lib/scale";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import Link from "next/link";
+
+function eventVisible(
+  event: { mandatory: boolean; audience: string },
+  person: { competencies: string[] },
+  hasScale: boolean,
+  hasLink: boolean,
+  admin: boolean,
+) {
+  if (admin || event.mandatory || event.audience === "todos") return true;
+  if (event.audience === "musicos") return person.competencies.includes("MUSICO");
+  return hasScale || hasLink;
+}
 
 export default async function AgendaPage({
   searchParams,
@@ -17,6 +33,7 @@ export default async function AgendaPage({
   const person = await requirePerson();
   const params = await searchParams;
   const now = new Date();
+  const { month, days } = monthGrid(now);
 
   const [scale, events, links] = await Promise.all([
     prisma.scaleEntry.findMany({
@@ -33,7 +50,12 @@ export default async function AgendaPage({
     }),
     prisma.regionalEvent.findMany({
       where: { startsAt: { gte: now }, cancelled: false },
-      include: { type: true, attendances: { where: { personId: person.id } }, baptisms: true },
+      include: {
+        type: true,
+        attendances: { where: { personId: person.id } },
+        baptisms: true,
+        justifications: { where: { personId: person.id } },
+      },
       orderBy: { startsAt: "asc" },
     }),
     prisma.institutionLink.findMany({
@@ -60,8 +82,25 @@ export default async function AgendaPage({
           take: 24,
         });
 
-  const visibleEvents = events.filter((event) => event.mandatory || scale.length > 0 || links.length > 0);
-  const canRecordBaptism = canUseCoordinatorPanel(person);
+  const admin = isAdmin(person);
+  const canRecordBaptism = canUseCoordinatorPanel(person) || admin;
+  const visibleEvents = events.filter((event) =>
+    eventVisible(event, person, scale.length > 0, activeLinks.length > 0, admin),
+  );
+
+  const marks = new Map<string, string[]>();
+  for (const entry of scale) {
+    const key = dayKey(entry.occurrence.date);
+    const list = marks.get(key) ?? [];
+    list.push(entry.occurrence.series.institution.name);
+    marks.set(key, list);
+  }
+  for (const event of visibleEvents) {
+    const key = dayKey(event.startsAt);
+    const list = marks.get(key) ?? [];
+    list.push(event.title);
+    marks.set(key, list);
+  }
 
   return (
     <div>
@@ -71,6 +110,38 @@ export default async function AgendaPage({
         prazo padrão de dois dias antes, configurável na série.
       </p>
       <Flash erro={params.erro} ok={params.ok} />
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium capitalize">{format(month, "MMMM yyyy", { locale: ptBR })}</p>
+        <Button render={<Link href="/api/agenda/ics" />} variant="outline" size="sm">
+          Exportar para agenda pessoal
+        </Button>
+      </div>
+      <div className="mb-10 grid grid-cols-7 gap-1 text-center text-xs">
+        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((label) => (
+          <p key={label} className="py-1 font-medium text-muted-foreground">
+            {label}
+          </p>
+        ))}
+        {days.map((day) => {
+          const inMonth = day.getMonth() === month.getMonth();
+          const items = marks.get(dayKey(day)) ?? [];
+          return (
+            <div
+              key={day.toISOString()}
+              className={`min-h-16 rounded-lg border border-border p-1 text-left ${inMonth ? "bg-background" : "bg-muted/40 text-muted-foreground"}`}
+            >
+              <p className="text-[11px]">{format(day, "d")}</p>
+              {items.slice(0, 2).map((item) => (
+                <p key={item} className="truncate text-[10px] text-primary">
+                  {item}
+                </p>
+              ))}
+              {items.length > 2 ? <p className="text-[10px] text-muted-foreground">+{items.length - 2}</p> : null}
+            </div>
+          );
+        })}
+      </div>
 
       <section className="mb-10">
         <h2 className="mb-3 text-xl">Atendimentos</h2>
@@ -87,6 +158,9 @@ export default async function AgendaPage({
                 <div key={entry.id} className="rounded-xl border border-border p-4">
                   <p className="font-medium">{entry.occurrence.series.institution.name}</p>
                   <p className="text-sm text-muted-foreground capitalize">{formatDayLong(entry.occurrence.date)}</p>
+                  {plannedRoleLabel(entry.plannedRole) ? (
+                    <p className="text-sm text-muted-foreground">Função prevista: {plannedRoleLabel(entry.plannedRole)}</p>
+                  ) : null}
                   {justification ? (
                     <p className="mt-2 text-sm">Justificativa enviada: {justification.reason}</p>
                   ) : (
@@ -116,7 +190,12 @@ export default async function AgendaPage({
                 <p className="mt-2 text-sm text-muted-foreground">
                   {occurrence.scale.length === 0
                     ? "Escala ainda vazia."
-                    : occurrence.scale.map((entry) => entry.person.name).join(", ")}
+                    : occurrence.scale
+                        .map((entry) => {
+                          const role = plannedRoleLabel(entry.plannedRole);
+                          return role ? `${entry.person.name} (${role})` : entry.person.name;
+                        })
+                        .join(", ")}
                 </p>
               </div>
             ))}
@@ -132,6 +211,7 @@ export default async function AgendaPage({
           <div className="grid gap-3">
             {visibleEvents.map((event) => {
               const isBaptism = event.type.name.toLowerCase().includes("batismo");
+              const justification = event.justifications[0];
               return (
                 <div key={event.id} className="rounded-xl border border-border p-4">
                   <p className="font-medium">{event.title}</p>
@@ -147,7 +227,20 @@ export default async function AgendaPage({
                       {event.latitude != null && event.longitude != null ? " e localização compatível" : ""}.
                     </p>
                   )}
-                  {isBaptism ? (
+                  {event.attendances.length === 0 ? (
+                    justification ? (
+                      <p className="mt-2 text-sm">Justificativa enviada: {justification.reason}</p>
+                    ) : (
+                      <form action={submitJustification} className="mt-3 grid gap-2">
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <textarea className={areaClass} name="reason" placeholder="Motivo da ausência no evento" required />
+                        <Button type="submit" variant="outline">
+                          Justificar ausência no evento
+                        </Button>
+                      </form>
+                    )
+                  ) : null}
+                  {isBaptism && (canRecordBaptism || admin) ? (
                     <div className="mt-3">
                       <p className="text-sm font-medium">Batizandos</p>
                       <ul className="mt-1 text-sm text-muted-foreground">

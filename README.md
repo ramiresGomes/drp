@@ -7,8 +7,8 @@ Há um cadastro Darpe por pessoa, vínculo institucional para autorizar escala, 
 ## Painéis
 
 - **Secretaria** — pessoas, cidades, comuns, instituições, vínculos, séries, eventos, avisos, moderação de arquivos, pedidos LGPD, incidentes, dupla aprovação, auditoria e relatórios.
-- **Coordenação** — escala só de vinculados, cancelamento justificado, presença no mesmo dia, participação extra, envio de foto/PDF para moderação.
-- **Colaborador** — agenda, justificativa, avisos (ciência/confirmação), dados próprios, bloqueios de agenda e pedido LGPD.
+- **Coordenação** — escala só de vinculados, sugestão de disponíveis, cancelamento justificado, presença no mesmo dia (com correção), participação extra, envio de foto/PDF para moderação.
+- **Colaborador** — agenda mensal e exportação .ics, justificativa, avisos (ciência/confirmação), dados próprios, bloqueios de agenda e pedido LGPD.
 - **Encarregado regional** — concede vínculo institucional sem abrir o restante da secretaria.
 
 Todos os painéis usam o mesmo Google OAuth. Nesta prévia local, se `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` não estiverem definidos, o login de demonstração por e-mail cadastrado permanece disponível.
@@ -53,7 +53,10 @@ Não há senha: o e-mail precisa existir no cadastro Darpe.
 - Check-in de evento é pelo QR, com login e localização quando o local tem geofence.
 - Foto ou PDF do atendimento só fica visível depois da moderação da secretaria.
 - Relatório amplo permanece anonimizado até a secretaria marcar identificação.
-- Exportação em CSV e página para imprimir/salvar PDF.
+- Exportação em CSV e página para imprimir/salvar PDF, com recorte por mês, trimestre, semestre ou ano.
 - Avisos internos por função, competência, instituição, setor ou cidade; agendamento congela o público no envio.
+- Escala gera aviso interno a quem entra; cancelamento e lembrete de evento também.
+- Agenda mensal com exportação `.ics`.
 - Pedido LGPD do titular: acesso e correção na secretaria; exclusão segue para dupla aprovação.
 - Dupla aprovação: superadmin, exclusão LGPD, reabrir presença após o dia, cancelar reunião/ensaio convocado.
+- No mesmo dia a coordenação corrige presença mesmo com a lista fechada; depois do dia pede reabertura.

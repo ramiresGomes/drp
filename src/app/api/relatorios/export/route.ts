@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     situacao: request.nextUrl.searchParams.get("situacao") ?? "",
     fato: request.nextUrl.searchParams.get("fato") ?? "atendimentos",
     anonimizado: request.nextUrl.searchParams.get("anonimizado"),
+    periodo: request.nextUrl.searchParams.get("periodo"),
   };
   const table = await loadReportTable(params);
   const csv = [table.header, ...table.rows].map((line) => csvLine(line)).join("\n");

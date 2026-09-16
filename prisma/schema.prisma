@@ -170,6 +170,7 @@ model ScaleEntry {
   occurrence    Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
   personId      String
   person        Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  plannedRole   String?
   createdAt     DateTime   @default(now())
   @@unique([occurrenceId, personId])
 }
@@ -243,6 +244,7 @@ model EventType {
   id          String   @id @default(cuid())
   name        String   @unique
   mandatory   Boolean  @default(false)
+  audience    String   @default("todos")
   checklist   String
   events      RegionalEvent[]
 }
@@ -259,6 +261,7 @@ model RegionalEvent {
   longitude     Float?
   radiusMeters  Int       @default(250)
   mandatory     Boolean
+  audience      String    @default("todos")
   checkinToken  String    @unique
   createdById   String
   createdBy     Person    @relation(fields: [createdById], references: [id])
@@ -266,6 +269,7 @@ model RegionalEvent {
   cancelled     Boolean   @default(false)
   cancelReason  String?
   presidingElder String?
+  remindedAt    DateTime?
   baptisms      Baptism[]
   attendances   EventAttendance[]
   justifications Justification[]
