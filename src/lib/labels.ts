@@ -57,11 +57,36 @@ export const APPROVAL_LABELS: Record<string, string> = {
   CANCEL_MANDATORY_EVENT: "Cancelar reunião ou ensaio convocado",
 };
 
+export const LGPD_TYPE_LABELS: Record<string, string> = {
+  ACCESS: "Acesso aos dados",
+  CORRECTION: "Correção de dados",
+  ERASURE: "Exclusão definitiva",
+};
+
+export const LGPD_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pendente",
+  DONE: "Atendido",
+  FORWARDED: "Encaminhado à dupla aprovação",
+  REJECTED: "Recusado",
+};
+
 export const AUDIENCE_LABELS: Record<string, string> = {
   todos: "Toda a regional",
   admin: "Secretaria e coordenação",
   vinculados: "Pessoas com vínculo institucional",
+  escalados: "Quem está na escala",
+  papel: "Por função",
+  competencia: "Por competência",
+  instituicao: "Por instituição",
+  setor: "Por setor",
+  cidade: "Por cidade",
   musicos: "Músicos",
+  pessoas: "Pessoas específicas",
+};
+
+export const INCIDENT_STATUS_LABELS: Record<string, string> = {
+  OPEN: "Aberto",
+  CLOSED: "Encerrado",
 };
 
 export const WEEKDAYS = [

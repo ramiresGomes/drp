@@ -1,12 +1,21 @@
-import { addBaptismName, createEventType, createRegionalEvent, markEventAttendance } from "@/app/actions/admin";
+import {
+  addBaptismName,
+  createEventType,
+  createRegionalEvent,
+  markEventAttendance,
+  toggleChecklistItem,
+  updateChecklistDetails,
+} from "@/app/actions/admin";
 import { AdminNav } from "@/components/admin-nav";
 import { EmptyState, Flash } from "@/components/flash";
 import { controlClass, Field } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { parseChecklist } from "@/lib/checklist";
 import { prisma } from "@/lib/db";
 import { formatDateTime } from "@/lib/dates";
 import { requireAdmin } from "@/lib/session";
+import Link from "next/link";
 
 export default async function EventsPage({
   searchParams,
@@ -50,6 +59,13 @@ export default async function EventsPage({
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="mandatory" /> Tipo obrigatório por padrão
               </label>
+              <Field label="Público padrão">
+                <select className={controlClass} name="audience" defaultValue="todos">
+                  <option value="todos">Toda a regional</option>
+                  <option value="escalados">Quem está na escala</option>
+                  <option value="musicos">Músicos</option>
+                </select>
+              </Field>
               <Button type="submit">Salvar tipo</Button>
             </form>
           </CardContent>
@@ -75,11 +91,23 @@ export default async function EventsPage({
               <Field label="Início">
                 <input className={controlClass} type="datetime-local" name="startsAt" required />
               </Field>
+              <Field label="Término (opcional)">
+                <input className={controlClass} type="datetime-local" name="endsAt" />
+              </Field>
               <Field label="Local">
                 <input className={controlClass} name="location" required />
               </Field>
               <Field label="Ancião que preside (batismo)">
                 <input className={controlClass} name="presidingElder" />
+              </Field>
+              <Field label="Latitude (opcional)">
+                <input className={controlClass} name="latitude" placeholder="-18.9186" />
+              </Field>
+              <Field label="Longitude (opcional)">
+                <input className={controlClass} name="longitude" placeholder="-48.2772" />
+              </Field>
+              <Field label="Raio do check-in (metros)">
+                <input className={controlClass} type="number" name="radiusMeters" defaultValue={250} min={50} />
               </Field>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="mandatory" /> Obrigatório para toda a regional
@@ -94,18 +122,66 @@ export default async function EventsPage({
         <EmptyState title="Nenhum evento" description="Publique reunião, ensaio ou batismo." />
       ) : (
         <div className="grid gap-4">
-          {events.map((event) => (
+          {events.map((event) => {
+            const checklist = parseChecklist(event.checklistJson);
+            return (
             <div key={event.id} className="rounded-xl border border-border p-4">
               <p className="font-medium">{event.title}</p>
               <p className="text-sm text-muted-foreground">
                 {event.type.name} · {formatDateTime(event.startsAt)} · {event.location}
                 {event.mandatory ? " · obrigatório" : ""}
+                {event.audience && event.audience !== "todos" ? ` · público ${event.audience}` : ""}
                 {event.cancelled ? " · cancelado" : ""}
                 {event.presidingElder ? ` · preside ${event.presidingElder}` : ""}
+                {event.latitude != null && event.longitude != null ? " · check-in com geofence" : ""}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Token de check-in: {event.checkinToken} · {event.attendances.length} presença(s)
+                {event.attendances.length} presença(s)
               </p>
+              <p className="mt-1 text-sm">
+                <Link className="underline-offset-4 hover:underline" href={`/app/checkin/${event.checkinToken}`}>
+                  Abrir página do QR / check-in
+                </Link>
+              </p>
+              {checklist.length > 0 ? (
+                <div className="mt-3 grid gap-3">
+                  <p className="text-sm font-medium">Checklist deste evento</p>
+                  {checklist.map((item) => (
+                    <div key={item.id} className="rounded-lg border border-border p-3">
+                      <form action={toggleChecklistItem} className="flex items-center justify-between gap-2">
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <span className="text-sm">
+                          {item.done ? "✓ " : ""}
+                          {item.label}
+                          {item.required ? " · obrigatório" : ""}
+                          {item.owner ? ` · resp. ${item.owner}` : ""}
+                          {item.dueAt ? ` · até ${item.dueAt.replace("T", " ")}` : ""}
+                        </span>
+                        <Button type="submit" size="sm" variant="outline">
+                          {item.done ? "Reabrir item" : "Concluir"}
+                        </Button>
+                      </form>
+                      <form action={updateChecklistDetails} className="mt-2 grid gap-2 sm:grid-cols-3">
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <Field label="Responsável">
+                          <input className={controlClass} name="owner" defaultValue={item.owner} />
+                        </Field>
+                        <Field label="Prazo">
+                          <input className={controlClass} type="datetime-local" name="dueAt" defaultValue={item.dueAt} />
+                        </Field>
+                        <Field label="Evidência">
+                          <input className={controlClass} name="evidence" defaultValue={item.evidence} placeholder="Link ou nota" />
+                        </Field>
+                        <Button type="submit" size="sm" variant="outline" className="sm:col-span-3">
+                          Guardar responsável e prazo
+                        </Button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {event.type.name.toLowerCase().includes("batismo") || event.baptisms.length > 0 ? (
                 <div className="mt-3">
                   <p className="text-sm font-medium">Batizandos</p>
@@ -114,6 +190,7 @@ export default async function EventsPage({
                   </ul>
                   <form action={addBaptismName} className="mt-2 flex gap-2">
                     <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="from" value="/app/admin/eventos" />
                     <input className={controlClass} name="fullName" placeholder="Nome completo" required />
                     <Button type="submit" variant="outline">
                       Incluir nome
@@ -135,7 +212,8 @@ export default async function EventsPage({
                 </Button>
               </form>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

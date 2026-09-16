@@ -9,6 +9,7 @@ export type CurrentPerson = {
   roles: string[];
   competencies: string[];
   responsibleInstitutionIds: string[];
+  muteOptionalNotifications: boolean;
 };
 
 export function isAdmin(person: CurrentPerson) {

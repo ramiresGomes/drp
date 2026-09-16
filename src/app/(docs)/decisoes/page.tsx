@@ -13,7 +13,7 @@ export default function DecisionsPage() {
         kicker="Governança"
         badge="PRD 1.0"
         title="A definição de negócio está fechada."
-        description="Login, menores, cidades e dupla aprovação já foram confirmados. O próximo passo é implementar a v1."
+        description="Login, menores, cidades e dupla aprovação já foram confirmados. A operação cotidiana da v1 já está no sistema."
       />
 
       <section className="mb-10">

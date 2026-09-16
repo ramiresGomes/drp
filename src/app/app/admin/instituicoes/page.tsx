@@ -1,4 +1,4 @@
-import { createInstitution, setInstitutionResponsible } from "@/app/actions/admin";
+import { createInstitution, setInstitutionActive, setInstitutionResponsible } from "@/app/actions/admin";
 import { AdminNav } from "@/components/admin-nav";
 import { EmptyState, Flash } from "@/components/flash";
 import { controlClass, Field } from "@/components/field";
@@ -91,10 +91,14 @@ export default async function InstitutionsPage({
         <div className="grid gap-3">
           {institutions.map((institution) => (
             <div key={institution.id} className="rounded-xl border border-border p-4">
-              <p className="font-medium">{institution.name}</p>
+              <p className="font-medium">
+                {institution.name}
+                {institution.active ? "" : " · inativa"}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {institution.city.name} · setor {institution.sector.code} · {institution.address}
                 {institution.capacity ? ` · capacidade ${institution.capacity}` : ""}
+                {institution.requiresRecadastramento ? " · exige recadastramento" : ""}
               </p>
               <p className="mt-2 text-sm">
                 Responsáveis:{" "}
@@ -111,6 +115,13 @@ export default async function InstitutionsPage({
                 </select>
                 <Button type="submit" variant="outline">
                   Definir responsável
+                </Button>
+              </form>
+              <form action={setInstitutionActive} className="mt-3">
+                <input type="hidden" name="id" value={institution.id} />
+                <input type="hidden" name="active" value={institution.active ? "false" : "true"} />
+                <Button type="submit" variant={institution.active ? "outline" : "secondary"}>
+                  {institution.active ? "Inativar instituição" : "Reativar instituição"}
                 </Button>
               </form>
             </div>

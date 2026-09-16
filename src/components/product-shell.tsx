@@ -14,7 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { canUseCoordinatorPanel, isAdmin, type CurrentPerson } from "@/lib/permissions";
+import { canLinkPeople, canUseCoordinatorPanel, isAdmin, type CurrentPerson } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 function navFor(person: CurrentPerson) {
@@ -29,6 +29,13 @@ function navFor(person: CurrentPerson) {
       href: "/app/coordenacao",
       label: "Coordenação",
       description: "Escala e presença",
+    });
+  }
+  if (canLinkPeople(person) && !isAdmin(person)) {
+    items.splice(1, 0, {
+      href: "/app/admin/vinculos",
+      label: "Vínculos",
+      description: "Autorizar escala",
     });
   }
   if (isAdmin(person)) {

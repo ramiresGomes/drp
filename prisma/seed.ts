@@ -194,7 +194,7 @@ async function main() {
         institutionId,
         personId,
         createdById: ramires.id,
-        endAt: institutionId === presidio.id ? addDays(new Date(), 365) : null,
+        endAt: institutionId === presidio.id ? addDays(new Date(), personId === maria.id ? 20 : 365) : null,
       },
     });
   }

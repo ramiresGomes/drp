@@ -1,4 +1,4 @@
-import { addDays, format, isBefore, startOfDay } from "date-fns";
+import { addDays, format, isBefore, startOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export function toDay(date: Date) {
@@ -38,4 +38,16 @@ export function generateDates(start: Date, intervalDays: number, until: Date) {
     cursor = addDays(cursor, intervalDays);
   }
   return dates;
+}
+
+export function monthGrid(anchor = new Date()) {
+  const start = startOfWeek(startOfMonth(anchor), { weekStartsOn: 0 });
+  const end = endOfWeek(endOfMonth(anchor), { weekStartsOn: 0 });
+  const days: Date[] = [];
+  let cursor = start;
+  while (isBefore(cursor, end) || cursor.getTime() === end.getTime()) {
+    days.push(cursor);
+    cursor = addDays(cursor, 1);
+  }
+  return { month: startOfMonth(anchor), days };
 }
